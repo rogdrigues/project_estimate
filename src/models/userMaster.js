@@ -16,6 +16,7 @@ const userMasterSchema = new mongoose.Schema({
         location: { type: String },
         avatar: { type: String },
     },
+    refreshToken: { type: String },  // Storage refresh token
     lastLogin: { type: Date },  // Timestamp for last login
 }, { timestamps: true });  // Automatically adds createdAt and updatedAt fields
 

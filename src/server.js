@@ -12,7 +12,7 @@ app.use(express.json());
 (async () => {
     try {
         await connectDB();
-
+        app.use('/api/users', require('./routes/users'));
         app.listen(process.env.NODE_PORT, () => {
             console.log(`Server running at http://${process.env.MONGO_HOST}:${process.env.NODE_PORT}/`);
         })
