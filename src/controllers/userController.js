@@ -122,9 +122,18 @@ module.exports = {
                 EC: 0,
                 message: "Login successful",
                 data: {
-                    result: { accessToken, refreshToken },
+                    result: {
+                        access_token: accessToken,
+                        refresh_token: refreshToken
+                    },
                     metadata: {
-                        userId: user.id,
+                        id: user.id,
+                        username: user.username,
+                        email: user.email,
+                        role: user.role,
+                        division: user.division,
+                        department: user.department,
+                        profile: user.profile,
                         lastLogin: user.lastLogin || null
                     }
                 }
