@@ -19,7 +19,7 @@ const seedUsers = async () => {
         const users = [
             {
                 username: 'admin',
-                email: 'admin@example.com',
+                email: 'admin@gmail.com',
                 password: await bcrypt.hash('password123', 10),
                 role: adminRole._id,
                 profile: {
@@ -33,7 +33,7 @@ const seedUsers = async () => {
             },
             {
                 username: 'division_lead',
-                email: 'division_lead@example.com',
+                email: 'division_lead@gmail.com',
                 password: await bcrypt.hash('password123', 10),
                 role: divisionLeadRole._id,
                 profile: {
@@ -47,7 +47,7 @@ const seedUsers = async () => {
             },
             {
                 username: 'department_lead',
-                email: 'department_lead@example.com',
+                email: 'department_lead@gmail.com',
                 password: await bcrypt.hash('password123', 10),
                 role: departmentLeadRole._id,
                 profile: {
@@ -61,7 +61,7 @@ const seedUsers = async () => {
             },
             {
                 username: 'project_manager',
-                email: 'project_manager@example.com',
+                email: 'project_manager@gmail.com',
                 password: await bcrypt.hash('password123', 10),
                 role: projectManagerRole._id,
                 profile: {
@@ -75,7 +75,7 @@ const seedUsers = async () => {
             },
             {
                 username: 'reviewer',
-                email: 'reviewer@example.com',
+                email: 'reviewer@gmail.com',
                 password: await bcrypt.hash('password123', 10),
                 role: reviewerRole._id,
                 profile: {
@@ -89,7 +89,7 @@ const seedUsers = async () => {
             },
             {
                 username: 'employee',
-                email: 'employee@example.com',
+                email: 'employee@gmail.com',
                 password: await bcrypt.hash('password123', 10),
                 role: employeeRole._id,
                 profile: {
@@ -103,7 +103,7 @@ const seedUsers = async () => {
             },
             {
                 username: 'customer',
-                email: 'customer@example.com',
+                email: 'customer@gmail.com',
                 password: await bcrypt.hash('password123', 10),
                 role: customerRole._id,
                 profile: {

@@ -75,7 +75,7 @@ module.exports = {
         }
     },
     loginUser: async (req, res) => {
-        const errors = validationResult(req);
+        const errors = validationResult(req.body);
         if (!errors.isEmpty()) {
             return res.status(400).json({
                 EC: 1,
@@ -94,7 +94,7 @@ module.exports = {
             if (!user) {
                 return res.status(400).json({
                     EC: 1,
-                    message: "Invalid Credentials",
+                    message: "Cannot find user with this email",
                     data: {
                         result: null
                     }

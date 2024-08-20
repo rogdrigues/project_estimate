@@ -4,7 +4,7 @@ const { loginUser, refreshAccessToken, addNewUser } = require('../controllers/us
 const authenticateToken = require('../middlewares/authenticateToken');
 
 const router = express.Router();
-
+1
 router.post('/login', [
     check('email', 'Please include a valid email').isEmail(),
     check('password', 'Password is required').exists()
