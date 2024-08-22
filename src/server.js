@@ -6,7 +6,7 @@ const app = express();
 
 //Middleware
 app.use(express.json());
-
+app.use(express.urlencoded({ extended: true }));
 //Seed data
 const seedPermissions = require('./seeder/permissionSetSeeder');
 const seedUsers = require('./seeder/userMasterSeeder');

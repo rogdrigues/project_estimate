@@ -6,7 +6,7 @@ const { validationResult } = require('express-validator');
 
 module.exports = {
     addNewUser: async (req, res) => {
-        const errors = validationResult(req);
+        const errors = validationResult(req.body);
         if (!errors.isEmpty()) {
             return res.status(400).json({
                 EC: 1,
