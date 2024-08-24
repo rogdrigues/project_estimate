@@ -12,10 +12,12 @@ const projectSchema = new mongoose.Schema({
     startDate: { type: Date },  // Start date of the project
     deadline: { type: Date },  // Deadline for the project
     budget: { type: Number },  // Budget for the project
+    category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category' }, // Linked Category
     resources: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Resource' }],  // Linked resources
     checklists: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Checklist' }],  // Linked checklists
     technologies: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Technology' }],  // Linked technologies
     assumptions: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Assumption' }],  // Linked assumptions
+    productivity: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Productivity' }],  // Linked productivity data
 }, { timestamps: true });
 
 // Integrate mongoose-delete plugin for soft delete functionality
