@@ -19,6 +19,7 @@ const seedUsers = async () => {
         const users = [
             {
                 username: 'admin',
+                displayName: 'Admin01',
                 email: 'admin@gmail.com',
                 password: await bcrypt.hash('password123', 10),
                 role: adminRole._id,
@@ -33,6 +34,7 @@ const seedUsers = async () => {
             },
             {
                 username: 'division_lead',
+                displayName: 'Division01',
                 email: 'division_lead@gmail.com',
                 password: await bcrypt.hash('password123', 10),
                 role: divisionLeadRole._id,
@@ -47,6 +49,7 @@ const seedUsers = async () => {
             },
             {
                 username: 'department_lead',
+                displayName: 'Department01',
                 email: 'department_lead@gmail.com',
                 password: await bcrypt.hash('password123', 10),
                 role: departmentLeadRole._id,
@@ -61,6 +64,7 @@ const seedUsers = async () => {
             },
             {
                 username: 'project_manager',
+                displayName: 'Project01',
                 email: 'project_manager@gmail.com',
                 password: await bcrypt.hash('password123', 10),
                 role: projectManagerRole._id,
@@ -75,6 +79,7 @@ const seedUsers = async () => {
             },
             {
                 username: 'reviewer',
+                displayName: 'Reviewer01',
                 email: 'reviewer@gmail.com',
                 password: await bcrypt.hash('password123', 10),
                 role: reviewerRole._id,
@@ -89,6 +94,7 @@ const seedUsers = async () => {
             },
             {
                 username: 'employee',
+                displayName: 'Employee01',
                 email: 'employee@gmail.com',
                 password: await bcrypt.hash('password123', 10),
                 role: employeeRole._id,
@@ -103,6 +109,7 @@ const seedUsers = async () => {
             },
             {
                 username: 'customer',
+                displayName: 'Customer01',
                 email: 'customer@gmail.com',
                 password: await bcrypt.hash('password123', 10),
                 role: customerRole._id,
