@@ -1,10 +1,24 @@
 const express = require('express');
 const { check } = require('express-validator');
-const { loginUser, refreshAccessToken, addNewUser } = require('../controllers/userController');
+const {
+    getUsers,
+    getUserById,
+    loginUser,
+    addNewUser,
+    refreshAccessToken,
+    updateUser,
+    deleteUser
+} = require('../controllers/userController');
 const authenticateToken = require('../middlewares/authenticateToken');
 
 const router = express.Router();
-1
+
+//Get method
+router.get('/get-all-users', authenticateToken, getUsers);
+
+router.get('/:userId', authenticateToken, getUserById);
+
+//Post method
 router.post('/login', [
     check('email', 'Please include a valid email').isEmail(),
     check('password', 'Password is required').exists()
@@ -17,7 +31,18 @@ router.post('/add-user', [
     check('role', 'Role is required').not().isEmpty()
 ], authenticateToken, addNewUser);
 
-// Refresh access token
+
 router.post('/refresh-token', refreshAccessToken);
+
+//Put Method
+router.put('/:userId', [
+    check('username', 'Username is required').not().isEmpty(),
+    check('email', 'Please include a valid email').isEmail(),
+    check('role', 'Role is required').not().isEmpty()
+], authenticateToken, updateUser);
+
+//Delete Method
+router.delete('/:userId', authenticateToken, deleteUser);
+
 
 module.exports = router;
