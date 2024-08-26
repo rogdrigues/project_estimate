@@ -5,13 +5,12 @@ const authenticateToken = (req, res, next) => {
     if (!token) return res.status(401).json({ message: 'Access Denied' });
 
     try {
-        console.log('token', token);
         const verified = jwt.verify(token, process.env.JWT_SECRET);
         req.user = verified.user;
         next();
     } catch (err) {
-        console.error(err.message);
-        res.status(400).json({ message: 'Invalid Token' });
+        console.log(err.message);
+        res.status(400).json({ message: 'Token Expired' });
     }
 };
 

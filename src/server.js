@@ -1,12 +1,14 @@
 require('dotenv').config();
 
 const express = require('express');
+var cookies = require("cookie-parser");
 const connectDB = require('./config/db');
 const app = express();
 
 //Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookies());
 //Seed data
 const seedPermissions = require('./seeder/permissionSetSeeder');
 const seedUsers = require('./seeder/userMasterSeeder');

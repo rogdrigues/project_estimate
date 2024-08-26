@@ -404,10 +404,13 @@ module.exports = {
 
             res.cookie('refreshToken', refreshToken, {
                 httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'strict',
+                secure: process.env.NODE_ENV === 'production' ? true : false,
+                sameSite: 'Lax',
                 maxAge: parseInt(process.env.REFRESH_TOKEN_EXPIRES_IN) * 24 * 60 * 60 * 1000
             });
+
+            //Checking if cookie is set
+            console.log("Cookie set:", res.cookie);
 
             const accessTokenExpiresAt = Date.now() + parseInt(process.env.ACCESS_TOKEN_EXPIRES_IN) * 60 * 1000;
 
@@ -417,6 +420,7 @@ module.exports = {
                 data: {
                     result: {
                         access_token: accessToken,
+                        access_token_expires_at: accessTokenExpiresAt
                     },
                     metadata: {
                         id: user.id,
@@ -425,7 +429,6 @@ module.exports = {
                         role: user.role,
                         division: user.division,
                         department: user.department,
-                        profile: user.profile,
                         lastLogin: user.lastLogin || null
                     }
                 }
@@ -443,8 +446,9 @@ module.exports = {
     },
 
     refreshAccessToken: async (req, res) => {
+        console.log("Cookies:", req.cookies);
         const { refreshToken } = req.cookies;
-
+        console.log("Refresh token:", refreshToken);
         if (!refreshToken) {
             return res.status(403).json({
                 EC: 1,
@@ -481,8 +485,8 @@ module.exports = {
 
             res.cookie('refreshToken', newRefreshToken, {
                 httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'strict',
+                secure: process.env.NODE_ENV === 'production' ? true : false,
+                sameSite: 'Lax',
                 maxAge: parseInt(process.env.REFRESH_TOKEN_EXPIRES_IN) * 24 * 60 * 60 * 1000
             });
 
@@ -492,6 +496,7 @@ module.exports = {
                 data: {
                     result: {
                         access_token: accessToken,
+                        access_token_expires_at: accessTokenExpiresAt
                     },
                     metadata: {
                         id: user.id,
@@ -500,7 +505,6 @@ module.exports = {
                         role: user.role,
                         division: user.division,
                         department: user.department,
-                        profile: user.profile,
                         lastLogin: user.lastLogin || null
                     }
                 }
