@@ -112,7 +112,11 @@ module.exports = {
 
         try {
             // Find the user by ID
-            const user = await UserMaster.findById(userId);
+            const user = await UserMaster.findById(userId)
+                .populate('role')
+                .populate('division')
+                .populate('department');
+
             if (!user) {
                 return res.status(404).json({
                     EC: 1,
@@ -193,7 +197,10 @@ module.exports = {
         const { userId } = req.params;
 
         try {
-            const user = await UserMaster.findById(userId);
+            const user = await UserMaster.findById(userId)
+                .populate('role')
+                .populate('division')
+                .populate('department');
             if (!user) {
                 return res.status(404).json({
                     EC: 1,
@@ -233,6 +240,9 @@ module.exports = {
             const sortCriteria = { deleted: 1, createdAt: -1 };
 
             const users = await UserMaster.find()
+                .populate('role')
+                .populate('division')
+                .populate('department')
                 .sort(sortCriteria)
                 .skip(skip)
                 .limit(parseInt(limit))
@@ -270,7 +280,11 @@ module.exports = {
         const { userId } = req.params;
 
         try {
-            const user = await UserMaster.findById(userId);
+            const user = await UserMaster.findById(userId)
+                .populate('role')
+                .populate('division')
+                .populate('department');
+
             if (!user) {
                 return res.status(404).json({
                     EC: 1,
@@ -356,7 +370,11 @@ module.exports = {
         const { email, password } = req.body;
 
         try {
-            let user = await UserMaster.findOne({ email });
+            let user = await UserMaster.findOne({ email })
+                .populate('role')
+                .populate('division')
+                .populate('department');
+
             if (!user) {
                 return res.status(400).json({
                     EC: 1,
@@ -378,11 +396,20 @@ module.exports = {
                 });
             }
 
-            const accessToken = generateToken(user.id, process.env.ACCESS_TOKEN_EXPIRES_IN);
-            const refreshToken = generateToken(user.id, process.env.REFRESH_TOKEN_EXPIRES_IN);
+            const accessToken = generateToken(user._id, 'access');
+            const refreshToken = generateToken(user._id, 'refresh');
 
             user.refreshToken = refreshToken;
             await user.save();
+
+            res.cookie('refreshToken', refreshToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'strict',
+                maxAge: parseInt(process.env.REFRESH_TOKEN_EXPIRES_IN) * 24 * 60 * 60 * 1000
+            });
+
+            const accessTokenExpiresAt = Date.now() + parseInt(process.env.ACCESS_TOKEN_EXPIRES_IN) * 60 * 1000;
 
             return res.status(200).json({
                 EC: 0,
@@ -390,7 +417,6 @@ module.exports = {
                 data: {
                     result: {
                         access_token: accessToken,
-                        refresh_token: refreshToken
                     },
                     metadata: {
                         id: user.id,
@@ -405,24 +431,24 @@ module.exports = {
                 }
             });
         } catch (err) {
-            console.error(err.message);
             return res.status(500).json({
-                EC: 2,
-                message: "Server error",
+                EC: 1,
+                message: "An error occurred while logging in",
                 data: {
-                    result: null
+                    result: null,
+                    error: error.message
                 }
             });
         }
     },
 
     refreshAccessToken: async (req, res) => {
-        const { refreshToken } = req.body;
+        const { refreshToken } = req.cookies;
 
         if (!refreshToken) {
-            return res.status(401).json({
+            return res.status(403).json({
                 EC: 1,
-                message: "No refresh token provided",
+                message: "Refresh token not provided",
                 data: {
                     result: null
                 }
@@ -430,48 +456,64 @@ module.exports = {
         }
 
         try {
-            let user = await UserMaster.findOne({ refreshToken });
-            if (!user) {
+            const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+
+            const user = await UserMaster.findById(decoded.user.id)
+                .populate('role')
+                .populate('division')
+                .populate('department');
+
+            if (!user || user.refreshToken !== refreshToken) {
                 return res.status(403).json({
                     EC: 1,
-                    message: "Invalid refresh token",
+                    message: "Invalid or expired refresh token",
                     data: {
                         result: null
                     }
                 });
             }
 
-            jwt.verify(refreshToken, process.env.JWT_SECRET, (err, userData) => {
-                if (err) {
-                    return res.status(403).json({
-                        EC: 1,
-                        message: "Invalid refresh token",
-                        data: {
-                            result: null
-                        }
-                    });
-                }
+            const accessToken = generateToken(user._id, 'access');
 
-                const accessToken = generateToken(user.id, process.env.ACCESS_TOKEN_EXPIRES_IN); // Sử dụng thời gian hết hạn từ .env
+            const newRefreshToken = generateToken(user._id, 'refresh');
+            user.refreshToken = newRefreshToken;
+            await user.save();
 
-                return res.status(200).json({
-                    EC: 0,
-                    message: "Access token refreshed successfully",
-                    data: {
-                        result: { accessToken },
-                        metadata: {
-                            userId: user.id
-                        }
-                    }
-                });
+            res.cookie('refreshToken', newRefreshToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'strict',
+                maxAge: parseInt(process.env.REFRESH_TOKEN_EXPIRES_IN) * 24 * 60 * 60 * 1000
             });
-        } catch (err) {
-            console.error(err.message);
-            return res.status(500).json({
-                EC: 2,
-                message: "Server error",
+
+            return res.status(200).json({
+                EC: 0,
+                message: "Access token refreshed successfully",
                 data: {
-                    result: null
+                    result: {
+                        access_token: accessToken,
+                    },
+                    metadata: {
+                        id: user.id,
+                        username: user.username,
+                        email: user.email,
+                        role: user.role,
+                        division: user.division,
+                        department: user.department,
+                        profile: user.profile,
+                        lastLogin: user.lastLogin || null
+                    }
+                }
+            });
+
+        } catch (error) {
+            console.error("Error refreshing access token:", error.message);
+            return res.status(403).json({
+                EC: 1,
+                message: "Invalid refresh token",
+                data: {
+                    result: null,
+                    error: error.message
                 }
             });
         }
