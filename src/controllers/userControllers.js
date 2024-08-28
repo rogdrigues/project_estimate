@@ -446,9 +446,7 @@ module.exports = {
     },
 
     refreshAccessToken: async (req, res) => {
-        console.log("Cookies:", req.cookies);
         const { refreshToken } = req.cookies;
-        console.log("Refresh token:", refreshToken);
         if (!refreshToken) {
             return res.status(403).json({
                 EC: 1,
