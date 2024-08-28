@@ -8,7 +8,7 @@ const {
     refreshAccessToken,
     updateUser,
     deleteUser
-} = require('../controllers/userController');
+} = require('../controllers/userControllers');
 const authenticateToken = require('../middlewares/authenticateToken');
 
 const router = express.Router();
