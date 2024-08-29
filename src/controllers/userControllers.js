@@ -402,16 +402,6 @@ module.exports = {
             user.refreshToken = refreshToken;
             await user.save();
 
-            res.cookie('refreshToken', refreshToken, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production' ? true : false,
-                sameSite: 'Lax',
-                maxAge: parseInt(process.env.REFRESH_TOKEN_EXPIRES_IN) * 24 * 60 * 60 * 1000
-            });
-
-            //Checking if cookie is set
-            console.log("Cookie set:", res.cookie);
-
             const accessTokenExpiresAt = Date.now() + parseInt(process.env.ACCESS_TOKEN_EXPIRES_IN) * 60 * 1000;
 
             return res.status(200).json({
@@ -420,6 +410,7 @@ module.exports = {
                 data: {
                     result: {
                         access_token: accessToken,
+                        refresh_token: refreshToken,
                         access_token_expires_at: accessTokenExpiresAt
                     },
                     metadata: {
@@ -446,7 +437,7 @@ module.exports = {
     },
 
     refreshAccessToken: async (req, res) => {
-        const { refreshToken } = req.cookies;
+        const refreshToken = req.headers.cookie;
         if (!refreshToken) {
             return res.status(403).json({
                 EC: 1,
@@ -458,7 +449,7 @@ module.exports = {
         }
 
         try {
-            const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+            const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
 
             const user = await UserMaster.findById(decoded.user.id)
                 .populate('role')
@@ -481,19 +472,15 @@ module.exports = {
             user.refreshToken = newRefreshToken;
             await user.save();
 
-            res.cookie('refreshToken', newRefreshToken, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production' ? true : false,
-                sameSite: 'Lax',
-                maxAge: parseInt(process.env.REFRESH_TOKEN_EXPIRES_IN) * 24 * 60 * 60 * 1000
-            });
-
+            const accessTokenExpiresAt = Date.now() + parseInt(process.env.ACCESS_TOKEN_EXPIRES_IN) * 60 * 1000;
+            console.log("Access token refreshed successfully");
             return res.status(200).json({
                 EC: 0,
                 message: "Access token refreshed successfully",
                 data: {
                     result: {
                         access_token: accessToken,
+                        refresh_token: refreshToken,
                         access_token_expires_at: accessTokenExpiresAt
                     },
                     metadata: {
