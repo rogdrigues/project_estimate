@@ -18,7 +18,10 @@ app.use(cookies());
 //Seed data
 const seedPermissions = require('./seeder/permissionSetSeeder');
 const seedUsers = require('./seeder/userMasterSeeder');
-
+const seedDivisions = require('./seeder/divisionSeeder');
+const seedDepartments = require('./seeder/departmentSeeder');
+//Controller
+const { updateDivisionLeads } = require('./controllers/divisionControllers');
 //Making async so we can use await for mongoose connection
 (async () => {
     try {
@@ -26,7 +29,13 @@ const seedUsers = require('./seeder/userMasterSeeder');
         await connectDB();
         //Seeder Data goes here
         await seedPermissions();
+        await seedDivisions();
         await seedUsers();
+        //Update division leads
+        await updateDivisionLeads();
+        //Continue Seeder Data from here
+        await seedDepartments();
+        //End Seeder Data
         //Routes
         app.use('/api/users', require('./routes/userRoutes'));
 
