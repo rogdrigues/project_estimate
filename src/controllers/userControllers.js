@@ -233,7 +233,7 @@ module.exports = {
     },
     getUsers: async (req, res) => {
         try {
-            const { page = 1, limit = 10 } = req.query;
+            const { page = 1, limit = 99 } = req.query;
 
             const skip = (page - 1) * limit;
 
