@@ -473,14 +473,14 @@ module.exports = {
             await user.save();
 
             const accessTokenExpiresAt = Date.now() + parseInt(process.env.ACCESS_TOKEN_EXPIRES_IN) * 60 * 1000;
-            console.log("Access token refreshed successfully");
+
             return res.status(200).json({
                 EC: 0,
                 message: "Access token refreshed successfully",
                 data: {
                     result: {
                         access_token: accessToken,
-                        refresh_token: refreshToken,
+                        refresh_token: newRefreshToken,
                         access_token_expires_at: accessTokenExpiresAt
                     },
                     metadata: {
