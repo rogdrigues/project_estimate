@@ -38,7 +38,7 @@ const { updateDivisionLeads } = require('./controllers/divisionControllers');
         //End Seeder Data
         //Routes
         app.use('/api/users', require('./routes/userRoutes'));
-
+        app.use('/api/division', require('./routes/divisionRoutes'));
         app.listen(process.env.NODE_PORT, () => {
             console.log(`Server running at http://${process.env.MONGO_HOST}:${process.env.NODE_PORT}/`);
         })

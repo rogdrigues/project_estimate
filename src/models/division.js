@@ -5,7 +5,7 @@ const divisionSchema = new mongoose.Schema({
     name: { type: String, required: true },
     description: { type: String },
     lead: { type: mongoose.Schema.Types.ObjectId, ref: 'UserMaster' },  // Reference to the user leading the Division
-    code: { type: String, unique: true },  // Unique code for the Division
+    code: { type: String, unique: true, required: true },  // Unique code for the Division
     logo: { type: String },  // Logo of the Division
 }, { timestamps: true });
 

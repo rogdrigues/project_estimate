@@ -1,5 +1,3 @@
-// seeder/permissionSetSeeder.js
-
 const PermissionSet = require('../models/permissionSet');
 
 const seedPermissions = async () => {
