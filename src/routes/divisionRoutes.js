@@ -6,7 +6,7 @@ const { addDivision, updateDivision, deleteDivision, getAllDivisions, getDivisio
 const router = express.Router();
 
 router.post(
-    '/add',
+    '/add-division',
     [
         check('name', 'Division name is required').not().isEmpty(),
         check('code', 'Division code is required').not().isEmpty(),
@@ -17,7 +17,7 @@ router.post(
 );
 
 router.put(
-    '/update/:id',
+    '/:userId',
     [
         check('name', 'Division name is required').not().isEmpty(),
         check('code', 'Division code is required').not().isEmpty(),
@@ -27,7 +27,7 @@ router.put(
     updateDivision
 );
 
-router.delete('/delete/:id', authenticateToken, deleteDivision);
+router.delete('/:id', authenticateToken, deleteDivision);
 
 router.get('/get-all-division', authenticateToken, getAllDivisions);
 

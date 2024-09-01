@@ -39,6 +39,7 @@ const { updateDivisionLeads } = require('./controllers/divisionControllers');
         //Routes
         app.use('/api/users', require('./routes/userRoutes'));
         app.use('/api/division', require('./routes/divisionRoutes'));
+        app.use('/api/department', require('./routes/departmentRoutes'));
         app.listen(process.env.NODE_PORT, () => {
             console.log(`Server running at http://${process.env.MONGO_HOST}:${process.env.NODE_PORT}/`);
         })

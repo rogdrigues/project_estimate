@@ -159,7 +159,7 @@ module.exports = {
         try {
             const divisions = await Division.find()
                 .populate('lead', 'username email')
-                .sort({ createdAt: -1 });
+                .sort({ createdAt: -1, deleted: 1 });
 
             return res.status(200).json({
                 EC: 0,
