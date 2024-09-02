@@ -4,6 +4,7 @@ const UserMaster = require('../models/userMaster');
 const generateToken = require('../services/authService');
 const { validationResult } = require('express-validator');
 const { get } = require('mongoose');
+const PermissionSet = require('../models/permissionSet');
 
 const generateDisplayName = (username) => {
     const nameParts = username.split(' ');
@@ -27,7 +28,7 @@ module.exports = {
             });
         }
 
-        const { username, email, password, role, division, department, profile } = req.body;
+        const { email, role, division, department, profile } = req.body;
 
         try {
             // Check if email already exists
@@ -53,9 +54,18 @@ module.exports = {
                 });
             }
 
+            let username = profile.fullName.replace(/\s+/g, '').toLowerCase();
+            let existingUsername = await UserMaster.findOne({ username });
+            while (existingUsername) {
+                const code = Math.floor(100 + Math.random() * 900);
+                username = `${username}${code}`;
+                existingUsername = await UserMaster.findOne({ username });
+            }
             // Generate displayName
-            const displayName = generateDisplayName(username);
+            const displayName = generateDisplayName(profile.fullName);
 
+            //default password when adding new user
+            const password = process.env.DEFAULT_PASSWORD;
             // Hash the password before saving
             const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -246,6 +256,7 @@ module.exports = {
                 .sort(sortCriteria)
                 .skip(skip)
                 .limit(parseInt(limit))
+                .select('-password -refreshToken')
                 .exec();
 
             const totalUsers = await UserMaster.countDocuments();
@@ -321,7 +332,7 @@ module.exports = {
         const { userId } = req.params;
 
         try {
-            const user = await UserMaster.findOneWithDeleted({ _id: userId });
+            const user = await UserMaster.findOneWithDeleted({ _id: userId }).select("-password");
             if (!user) {
                 return res.status(404).json({
                     EC: 1,

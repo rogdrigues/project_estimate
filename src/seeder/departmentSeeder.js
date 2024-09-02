@@ -44,7 +44,6 @@ const seedDepartments = async () => {
         });
 
         const createdDepartments = await Department.insertMany(departments);
-        console.log('Departments created successfully');
 
         for (let i = 0; i < createdDepartments.length; i++) {
             const lead = departmentLeads[i % departmentLeads.length];

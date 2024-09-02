@@ -3,8 +3,14 @@ require('dotenv').config();
 const express = require('express');
 const cookies = require("cookie-parser");
 const connectDB = require('./config/db');
+const cors = require('cors');
 const app = express();
 
+//Set up cors
+app.use(cors({
+    origin: process.env.CLIENT_URL,
+    credentials: true,
+}));
 //Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

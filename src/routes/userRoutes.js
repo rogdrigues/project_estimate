@@ -10,13 +10,9 @@ const {
     deleteUser
 } = require('../controllers/userControllers');
 const authenticateToken = require('../middlewares/authenticateToken');
+const { getAllRoles } = require('../controllers/permissionSetControllers');
 
 const router = express.Router();
-
-//Get method
-router.get('/get-all-users', authenticateToken, getUsers);
-
-router.get('/:userId', authenticateToken, getUserById);
 
 //Post method
 router.post('/login', [
@@ -44,5 +40,11 @@ router.put('/:userId', [
 //Delete Method
 router.delete('/:userId', authenticateToken, deleteUser);
 
+//Get method
+router.get('/roles', authenticateToken, getAllRoles);
+
+router.get('/get-all-users', authenticateToken, getUsers);
+
+router.get('/:userId', authenticateToken, getUserById);
 
 module.exports = router;
