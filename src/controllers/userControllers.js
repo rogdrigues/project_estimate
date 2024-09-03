@@ -118,10 +118,9 @@ module.exports = {
         }
 
         const { userId } = req.params;
-        const { username, email, password, role, division, department, profile } = req.body;
+        const { role, division, department, profile, password } = req.body;
 
         try {
-            // Find the user by ID
             const user = await UserMaster.findById(userId)
                 .populate('role')
                 .populate('division')
@@ -137,21 +136,7 @@ module.exports = {
                 });
             }
 
-            // Check if the new email already exists (if it's different from the current one)
-            if (email && email !== user.email) {
-                const existingUser = await UserMaster.findOne({ email });
-                if (existingUser) {
-                    return res.status(400).json({
-                        EC: 1,
-                        message: "Email already in use",
-                        data: {
-                            result: null
-                        }
-                    });
-                }
-            }
-
-            if (role && role !== user.role) {
+            if (role && role !== user.role.toString()) {
                 const validRole = await PermissionSet.findById(role);
                 if (!validRole) {
                     return res.status(400).json({
@@ -162,25 +147,31 @@ module.exports = {
                         }
                     });
                 }
+                user.role = role;
             }
 
-            // Update fields
-            if (username && username !== user.username) {
+            if (profile && profile.fullName) {
+                let username = profile.fullName.replace(/\s+/g, '').toLowerCase();
+                let existingUsername = await UserMaster.findOne({ username });
+
+                while (existingUsername && existingUsername._id.toString() !== user._id.toString()) {
+                    const code = Math.floor(100 + Math.random() * 900);
+                    username = `${username}${code}`;
+                    existingUsername = await UserMaster.findOne({ username });
+                }
+
                 user.username = username;
-                user.displayName = generateDisplayName(username);
+                user.displayName = generateDisplayName(profile.fullName);
             }
-            user.email = email || user.email;
 
             if (password) {
                 user.password = await bcrypt.hash(password, 10);
             }
 
-            user.role = role || user.role;
             user.division = division || user.division;
             user.department = department || user.department;
             user.profile = { ...user.profile, ...profile };
 
-            // Save the updated user to the database
             await user.save();
 
             return res.status(200).json({
@@ -203,6 +194,7 @@ module.exports = {
             });
         }
     },
+
     getUserById: async (req, res) => {
         const { userId } = req.params;
 
