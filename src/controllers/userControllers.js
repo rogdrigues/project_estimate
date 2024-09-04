@@ -241,7 +241,7 @@ module.exports = {
 
             const sortCriteria = { deleted: 1, createdAt: -1 };
 
-            const users = await UserMaster.find()
+            const users = await UserMaster.findWithDeleted()
                 .populate('role')
                 .populate('division')
                 .populate('department')
@@ -252,6 +252,8 @@ module.exports = {
                 .exec();
 
             const totalUsers = await UserMaster.countDocuments();
+
+            console.log("Total users:", totalUsers);
 
             return res.status(200).json({
                 EC: 0,
@@ -373,7 +375,7 @@ module.exports = {
         const { email, password } = req.body;
 
         try {
-            let user = await UserMaster.findOne({ email })
+            let user = await UserMaster.findOneWithDeleted({ email })
                 .populate('role')
                 .populate('division')
                 .populate('department');
@@ -382,6 +384,16 @@ module.exports = {
                 return res.status(400).json({
                     EC: 1,
                     message: "Cannot find user with this email",
+                    data: {
+                        result: null
+                    }
+                });
+            }
+
+            if (user.deleted) {
+                return res.status(403).json({
+                    EC: 1,
+                    message: "Your account has been deactivated. Please contact support.",
                     data: {
                         result: null
                     }

@@ -7,7 +7,8 @@ const {
     addNewUser,
     refreshAccessToken,
     updateUser,
-    deleteUser
+    deleteUser,
+    restoreUser
 } = require('../controllers/userControllers');
 const authenticateToken = require('../middlewares/authenticateToken');
 const { getAllRoles } = require('../controllers/permissionSetControllers');
@@ -39,6 +40,7 @@ router.put('/:userId', [
 
 //Delete Method
 router.delete('/:userId', authenticateToken, deleteUser);
+router.delete('/restore/:userId', authenticateToken, restoreUser);
 
 //Get method
 router.get('/roles', authenticateToken, getAllRoles);
