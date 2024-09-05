@@ -8,7 +8,9 @@ const {
     refreshAccessToken,
     updateUser,
     deleteUser,
-    restoreUser
+    restoreUser,
+    exportUsers,
+    importUsers
 } = require('../controllers/userControllers');
 const authenticateToken = require('../middlewares/authenticateToken');
 const { getAllRoles } = require('../controllers/permissionSetControllers');
@@ -28,8 +30,9 @@ router.post('/add-user', [
     check('role', 'Role is required').not().isEmpty()
 ], authenticateToken, addNewUser);
 
-
 router.post('/refresh-token', refreshAccessToken);
+
+router.post('/import-users', importUsers); // Import users from Excel
 
 //Put Method
 router.put('/:userId', [
@@ -43,6 +46,8 @@ router.delete('/:userId', authenticateToken, deleteUser);
 router.delete('/restore/:userId', authenticateToken, restoreUser);
 
 //Get method
+router.get('/export-users', exportUsers); // Export users to Excel
+
 router.get('/roles', authenticateToken, getAllRoles);
 
 router.get('/get-all-users', authenticateToken, getUsers);

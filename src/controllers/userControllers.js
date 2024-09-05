@@ -5,6 +5,9 @@ const generateToken = require('../services/authService');
 const { validationResult } = require('express-validator');
 const { get } = require('mongoose');
 const PermissionSet = require('../models/permissionSet');
+const multer = require('multer');
+const upload = multer({ dest: 'uploads/' });
+const xlsx = require('xlsx');
 
 const generateDisplayName = (username) => {
     const nameParts = username.split(' ');
@@ -521,5 +524,133 @@ module.exports = {
                 }
             });
         }
-    }
+    },
+    exportUsers: async (req, res) => {
+        try {
+            const sortCriteria = { 'role.roleName': 1, deleted: 1, createdAt: -1 };
+
+            const users = await UserMaster.findWithDeleted()
+                .populate('role')
+                .populate('division')
+                .populate('department')
+                .sort(sortCriteria)
+                .select('-password -refreshToken')
+                .exec();
+
+            console.log("Users:", users);
+
+            // Convert data to an array of objects
+            const userData = users.map(user => ({
+                Username: user.username,
+                DisplayName: user.displayName,
+                Email: user.email,
+                Role: user.role ? user.role.roleName : 'N/A',
+                Division: user.division ? user.division.code : 'N/A',
+                Department: user.department ? user.department.code : 'N/A',
+            }));
+
+            // Create a new workbook and worksheet
+            const workBook = xlsx.utils.book_new();
+            const workSheet = xlsx.utils.json_to_sheet(userData, { skipHeader: true });
+
+            // Add headers (in bold)
+            const headers = ['Username', 'DisplayName', 'Email', 'Role', 'Division', 'Department'];
+            xlsx.utils.sheet_add_aoa(workSheet, [headers], { origin: 'A1' });
+
+            // Apply styles to the headers (bold)
+            headers.forEach((header, index) => {
+                const cellRef = xlsx.utils.encode_cell({ c: index, r: 0 });  // Cell reference (e.g., A1, B1, etc.)
+                if (!workSheet[cellRef]) workSheet[cellRef] = {};  // Initialize cell if it's undefined
+                workSheet[cellRef].s = { font: { bold: true } };  // Apply bold font
+            });
+
+            // Auto width calculation based on the maximum length in each column
+            const columnWidths = headers.map((header, i) => ({
+                wch: Math.max(
+                    header.length, // Header length
+                    ...userData.map(row => (row[header] || '').toString().length) // Data length
+                )
+            }));
+            workSheet['!cols'] = columnWidths;
+
+            // Append the worksheet to the workbook
+            xlsx.utils.book_append_sheet(workBook, workSheet, 'Users');
+
+            // Write the Excel file to buffer
+            const buffer = xlsx.write(workBook, { type: 'buffer', bookType: 'xlsx' });
+
+            // Set the response headers and send the file
+            res.setHeader('Content-Disposition', 'attachment; filename=users.xlsx');
+            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            return res.send(buffer);
+
+        } catch (error) {
+            return res.status(500).json({
+                EC: 1,
+                message: "An error occurred while exporting users",
+                data: {
+                    result: null,
+                    error: error.message
+                }
+            });
+        }
+    },
+    importUsers: [
+        upload.single('file'),
+        async (req, res) => {
+            try {
+                if (!req.file) {
+                    return res.status(400).json({
+                        EC: 1,
+                        message: "No file uploaded",
+                        data: {
+                            result: null
+                        }
+                    });
+                }
+
+                // Read the Excel file
+                const workBook = xlsx.readFile(req.file.path);
+                const workSheet = workBook.Sheets[workBook.SheetNames[0]];
+                const userData = xlsx.utils.sheet_to_json(workSheet);
+
+                // Loop through the data and insert into MongoDB
+                for (let row of userData) {
+                    const { Username, DisplayName, Email, Role, Division, Department } = row;
+
+                    const existingUser = await UserMaster.findOne({ email: Email });
+                    if (!existingUser) {
+                        const newUser = new UserMaster({
+                            username: Username,
+                            displayName: DisplayName,
+                            email: Email,
+                            role: Role,
+                            division: Division,
+                            department: Department,
+                            password: bcrypt.hashSync(process.env.DEFAULT_PASSWORD, 10),
+                        });
+                        await newUser.save();
+                    }
+                }
+
+                return res.status(200).json({
+                    EC: 0,
+                    message: "Users imported successfully",
+                    data: {
+                        result: userData
+                    }
+                });
+
+            } catch (error) {
+                return res.status(500).json({
+                    EC: 1,
+                    message: "An error occurred while importing users",
+                    data: {
+                        result: null,
+                        error: error.message
+                    }
+                });
+            }
+        }
+    ]
 };
