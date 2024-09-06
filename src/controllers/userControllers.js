@@ -690,7 +690,8 @@ module.exports = {
                             role: validRole._id,
                             division: validDivision ? validDivision._id : null,
                             department: validDepartment ? validDepartment._id : null,
-                            password: bcrypt.hashSync(process.env.DEFAULT_PASSWORD, 10)
+                            password: bcrypt.hashSync(process.env.DEFAULT_PASSWORD, 10),
+                            profile: { fullName }
                         });
 
                         await newUser.save();
@@ -727,7 +728,6 @@ module.exports = {
                     res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
                     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 
-                    // Trả về file Excel lỗi
                     return res.status(200).send(errorBuffer);
                 }
 
