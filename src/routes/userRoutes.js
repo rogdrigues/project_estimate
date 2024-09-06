@@ -32,7 +32,7 @@ router.post('/add-user', [
 
 router.post('/refresh-token', refreshAccessToken);
 
-router.post('/import-users', importUsers); // Import users from Excel
+router.post('/import-users', authenticateToken, importUsers); // Import users from Excel
 
 //Put Method
 router.put('/:userId', [
@@ -46,7 +46,7 @@ router.delete('/:userId', authenticateToken, deleteUser);
 router.delete('/restore/:userId', authenticateToken, restoreUser);
 
 //Get method
-router.get('/export-users', exportUsers); // Export users to Excel
+router.get('/export-users', authenticateToken, exportUsers); // Export users to Excel
 
 router.get('/roles', authenticateToken, getAllRoles);
 

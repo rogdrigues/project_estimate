@@ -5,9 +5,13 @@ const generateToken = require('../services/authService');
 const { validationResult } = require('express-validator');
 const { get } = require('mongoose');
 const PermissionSet = require('../models/permissionSet');
-const multer = require('multer');
-const upload = multer({ dest: 'uploads/' });
 const xlsx = require('xlsx');
+const validator = require('validator');
+const Division = require('../models/division');
+const Department = require('../models/department');
+const multer = require('multer');
+const memoryStorage = multer.memoryStorage();
+const upload = multer({ storage: memoryStorage });
 
 const generateDisplayName = (username) => {
     const nameParts = username.split(' ');
@@ -255,8 +259,6 @@ module.exports = {
                 .exec();
 
             const totalUsers = await UserMaster.countDocuments();
-
-            console.log("Total users:", totalUsers);
 
             return res.status(200).json({
                 EC: 0,
@@ -537,8 +539,6 @@ module.exports = {
                 .select('-password -refreshToken')
                 .exec();
 
-            console.log("Users:", users);
-
             // Convert data to an array of objects
             const userData = users.map(user => ({
                 Username: user.username,
@@ -579,8 +579,14 @@ module.exports = {
             // Write the Excel file to buffer
             const buffer = xlsx.write(workBook, { type: 'buffer', bookType: 'xlsx' });
 
+            // Generate a unique file name
+            const date = new Date();
+            const formattedDate = date.toISOString().slice(0, 10).replace(/-/g, '');
+            const formattedTime = date.toTimeString().slice(0, 5).replace(/:/g, '');
+            const fileName = `users_export_${formattedDate}_${formattedTime}.xlsx`;
+
             // Set the response headers and send the file
-            res.setHeader('Content-Disposition', 'attachment; filename=users.xlsx');
+            res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
             res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
             return res.send(buffer);
 
@@ -599,56 +605,143 @@ module.exports = {
         upload.single('file'),
         async (req, res) => {
             try {
-                if (!req.file) {
-                    return res.status(400).json({
-                        EC: 1,
-                        message: "No file uploaded",
-                        data: {
-                            result: null
-                        }
-                    });
-                }
+                const updateExisting = true;
+                const file = req.file;
 
-                // Read the Excel file
-                const workBook = xlsx.readFile(req.file.path);
+                const workBook = xlsx.read(file.buffer, { type: 'buffer' });
                 const workSheet = workBook.Sheets[workBook.SheetNames[0]];
-                const userData = xlsx.utils.sheet_to_json(workSheet);
 
-                // Loop through the data and insert into MongoDB
-                for (let row of userData) {
-                    const { Username, DisplayName, Email, Role, Division, Department } = row;
+                const rows = xlsx.utils.sheet_to_json(workSheet, { header: 1 }).slice(1);
 
-                    const existingUser = await UserMaster.findOne({ email: Email });
-                    if (!existingUser) {
+                let errors = [];
+
+                for (let row of rows) {
+                    let [fullName, displayName, email, role, division, department] = row;
+                    let username = fullName.replace(/\s+/g, '').toLowerCase();
+                    displayName = generateDisplayName(fullName);
+
+                    let existingUser = await UserMaster.findOne({ email });
+                    if (existingUser) {
+                        if (updateExisting) {
+                            existingUser.email = email || existingUser.email;
+
+                            let duplicateUser = await UserMaster.findOne({ username });
+                            while (duplicateUser && duplicateUser._id.toString() !== existingUser._id.toString()) {
+                                const code = Math.floor(100 + Math.random() * 900);
+                                username = `${username}${code}`;
+                                duplicateUser = await UserMaster.findOne({ username });
+                            }
+
+                            existingUser.username = username;
+                            existingUser.displayName = generateDisplayName(fullName);
+
+                            const validRole = await PermissionSet.findOne({ roleName: role });
+                            if (validRole) {
+                                existingUser.role = validRole._id;
+                            }
+
+                            const validDivision = division && division !== 'N/A' ? await Division.findOne({ code: division }) : null;
+                            existingUser.division = validDivision ? validDivision._id : existingUser.division;
+
+                            const validDepartment = department && department !== 'N/A' ? await Department.findOne({ code: department }) : null;
+                            existingUser.department = validDepartment ? validDepartment._id : existingUser.department;
+
+                            await existingUser.save();
+                        } else {
+                            errors.push({ row, message: `Username ${username} is already taken.` });
+                            continue;
+                        }
+                    } else {
+                        const validRole = await PermissionSet.findOne({ roleName: role });
+                        if (!validRole) {
+                            errors.push({ row, message: `Role ${role} does not exist.` });
+                            continue;
+                        }
+
+                        let validDivision = null;
+                        if (division && division !== 'N/A') {
+                            validDivision = await Division.findOne({ code: division });
+                            if (!validDivision) {
+                                errors.push({ row, message: `Division ${division} does not exist.` });
+                                continue;
+                            }
+                        }
+
+                        let validDepartment = null;
+                        if (department && department !== 'N/A') {
+                            validDepartment = await Department.findOne({ code: department });
+                            if (!validDepartment) {
+                                errors.push({ row, message: `Department ${department} does not exist.` });
+                                continue;
+                            }
+                        }
+
+                        let duplicateUser = await UserMaster.findOne({ username });
+                        while (duplicateUser) {
+                            const code = Math.floor(100 + Math.random() * 900);
+                            username = `${username}${code}`;
+                            duplicateUser = await UserMaster.findOne({ username });
+                        }
+
                         const newUser = new UserMaster({
-                            username: Username,
-                            displayName: DisplayName,
-                            email: Email,
-                            role: Role,
-                            division: Division,
-                            department: Department,
-                            password: bcrypt.hashSync(process.env.DEFAULT_PASSWORD, 10),
+                            username,
+                            displayName,
+                            email,
+                            role: validRole._id,
+                            division: validDivision ? validDivision._id : null,
+                            department: validDepartment ? validDepartment._id : null,
+                            password: bcrypt.hashSync(process.env.DEFAULT_PASSWORD, 10)
                         });
+
                         await newUser.save();
                     }
                 }
 
-                return res.status(200).json({
+                if (errors.length > 0) {
+                    const errorWorkBook = xlsx.utils.book_new();
+                    const errorSheetData = errors.map(error => ({
+                        Row: error.row.join(', '),
+                        ErrorMessage: error.message
+                    }));
+
+                    const errorWorkSheet = xlsx.utils.json_to_sheet(errorSheetData);
+
+                    const maxLengths = errorSheetData.reduce((acc, curr) => {
+                        Object.keys(curr).forEach((key, i) => {
+                            acc[i] = Math.max(acc[i] || 10, curr[key].length);
+                        });
+                        return acc;
+                    }, []);
+
+                    errorWorkSheet['!cols'] = maxLengths.map((width) => ({ wch: width }));
+
+                    xlsx.utils.book_append_sheet(errorWorkBook, errorWorkSheet, 'Errors');
+
+                    const errorBuffer = xlsx.write(errorWorkBook, { type: 'buffer', bookType: 'xlsx' });
+
+                    const date = new Date();
+                    const formattedDate = date.toISOString().slice(0, 10).replace(/-/g, '');
+                    const formattedTime = date.toTimeString().slice(0, 5).replace(/:/g, '');
+                    const fileName = `import_errors_${formattedDate}_${formattedTime}.xlsx`;
+
+                    res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
+                    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+                    // Trả về file Excel lỗi
+                    return res.status(200).send(errorBuffer);
+                }
+
+                return res.status(201).json({
                     EC: 0,
-                    message: "Users imported successfully",
-                    data: {
-                        result: userData
-                    }
+                    message: "Users imported successfully"
                 });
 
             } catch (error) {
+                console.error("Error importing users:", error.message);
                 return res.status(500).json({
                     EC: 1,
-                    message: "An error occurred while importing users",
-                    data: {
-                        result: null,
-                        error: error.message
-                    }
+                    message: "An error occurred during import",
+                    data: { error: error.message }
                 });
             }
         }

@@ -1,26 +1,11 @@
 require('dotenv').config();
-
-const express = require('express');
-const cookies = require("cookie-parser");
 const connectDB = require('./config/db');
-const cors = require('cors');
+const express = require('express');
 const app = express();
+const useMiddlewares = require('./middlewares/middleware');
 
-//Set up cors
-app.use(cors({
-    origin: process.env.CLIENT_URL,
-    credentials: true,
-}));
-//Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-//Set up middleware to log request time
-app.use((req, res, next) => {
-    console.log('Time:', Date.now());
-    next();
-});
-//Adding cookie parser for reading req.cookies
-app.use(cookies());
+// Call middleware.js
+useMiddlewares(app, express);
 //Seed data
 const seedPermissions = require('./seeder/permissionSetSeeder');
 const seedUsers = require('./seeder/userMasterSeeder');
