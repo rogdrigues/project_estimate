@@ -12,6 +12,7 @@ const Department = require('../models/department');
 const multer = require('multer');
 const memoryStorage = multer.memoryStorage();
 const upload = multer({ storage: memoryStorage });
+const cloudinary = require('cloudinary').v2;
 
 const generateDisplayName = (username) => {
     const nameParts = username.split(' ');
@@ -198,6 +199,65 @@ module.exports = {
                     result: null,
                     error: error.message
                 }
+            });
+        }
+    },
+    updateUserProfile: async (req, res) => {
+        const userId = req.user.id;
+        const profileFields = ['fullName', 'dateOfBirth', 'gender', 'phoneNumber', 'location'];
+        const updateFields = {};
+
+        // Gather update fields from req.body
+        profileFields.forEach(field => {
+            if (req.body[field]) {
+                updateFields[`profile.${field}`] = req.body[field];
+            }
+        });
+
+        console.log(updateFields);
+
+        try {
+            // Find the user
+            const user = await UserMaster.findById(userId)
+                .populate('role')
+                .populate('division')
+                .populate('department');
+            if (!user) {
+                return res.status(404).json({
+                    EC: 1,
+                    message: "User not found",
+                    data: { result: null }
+                });
+            }
+
+            // Handle avatar upload if provided
+            if (req.file) {
+                // If the user already has an avatar, delete the old one from Cloudinary
+                if (user.profile.avatar) {
+                    const publicId = user.profile.avatar.split('/').pop().split('.')[0]; // Extract the public ID
+                    await cloudinary.uploader.destroy(publicId);
+                }
+                updateFields['profile.avatar'] = req.file.path;
+            }
+
+            // Update the user's profile
+            user.profile.set(updateFields);
+
+            // Save updated profile
+            await user.save();
+
+            return res.status(200).json({
+                EC: 0,
+                message: "Profile updated successfully",
+                data: {
+                    result: user.profile
+                }
+            });
+        } catch (error) {
+            return res.status(500).json({
+                EC: 1,
+                message: "An error occurred while updating profile",
+                data: { result: null, error: error.message }
             });
         }
     },
@@ -438,8 +498,6 @@ module.exports = {
                         username: user.username,
                         email: user.email,
                         role: user.role,
-                        division: user.division,
-                        department: user.department,
                         lastLogin: user.lastLogin || null
                     }
                 }
@@ -605,6 +663,14 @@ module.exports = {
         upload.single('file'),
         async (req, res) => {
             try {
+                if (!req.file) {
+                    return res.status(400).json({
+                        EC: 1,
+                        message: "No file uploaded",
+                        data: { error: "Please upload a file" }
+                    });
+                }
+
                 const updateExisting = true;
                 const file = req.file;
 

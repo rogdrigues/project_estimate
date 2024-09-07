@@ -10,10 +10,12 @@ const {
     deleteUser,
     restoreUser,
     exportUsers,
-    importUsers
+    importUsers,
+    updateUserProfile
 } = require('../controllers/userControllers');
 const authenticateToken = require('../middlewares/authenticateToken');
 const { getAllRoles } = require('../controllers/permissionSetControllers');
+const upload = require('../middlewares/cloudinaryUpload');
 
 const router = express.Router();
 
@@ -34,6 +36,9 @@ router.post('/refresh-token', refreshAccessToken);
 
 router.post('/import-users', authenticateToken, importUsers); // Import users from Excel
 
+//patch method
+router.patch('/profile', authenticateToken, upload.single('avatar'), updateUserProfile);
+
 //Put Method
 router.put('/:userId', [
     check('username', 'Username is required').not().isEmpty(),
@@ -52,6 +57,6 @@ router.get('/roles', authenticateToken, getAllRoles);
 
 router.get('/get-all-users', authenticateToken, getUsers);
 
-router.get('/:userId', authenticateToken, getUserById);
+router.get('/get-user/:userId', authenticateToken, getUserById);
 
 module.exports = router;
