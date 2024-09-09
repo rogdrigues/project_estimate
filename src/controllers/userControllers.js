@@ -207,17 +207,13 @@ module.exports = {
         const profileFields = ['fullName', 'dateOfBirth', 'gender', 'phoneNumber', 'location'];
         const updateFields = {};
 
-        // Gather update fields from req.body
         profileFields.forEach(field => {
             if (req.body[field]) {
                 updateFields[`profile.${field}`] = req.body[field];
             }
         });
 
-        console.log(updateFields);
-
         try {
-            // Find the user
             const user = await UserMaster.findById(userId)
                 .populate('role')
                 .populate('division')
@@ -230,20 +226,16 @@ module.exports = {
                 });
             }
 
-            // Handle avatar upload if provided
             if (req.file) {
-                // If the user already has an avatar, delete the old one from Cloudinary
                 if (user.profile.avatar) {
-                    const publicId = user.profile.avatar.split('/').pop().split('.')[0]; // Extract the public ID
+                    const publicId = user.profile.avatar.split('/').pop().split('.')[0];
                     await cloudinary.uploader.destroy(publicId);
                 }
                 updateFields['profile.avatar'] = req.file.path;
             }
 
-            // Update the user's profile
-            user.profile.set(updateFields);
+            user.set(updateFields);
 
-            // Save updated profile
             await user.save();
 
             return res.status(200).json({
@@ -498,6 +490,9 @@ module.exports = {
                         username: user.username,
                         email: user.email,
                         role: user.role,
+                        profile: {
+                            avatar: user.profile.avatar || null,
+                        },
                         lastLogin: user.lastLogin || null
                     }
                 }
@@ -568,6 +563,9 @@ module.exports = {
                         role: user.role,
                         division: user.division,
                         department: user.department,
+                        profile: {
+                            avatar: user.profile.avatar || null,
+                        },
                         lastLogin: user.lastLogin || null
                     }
                 }
