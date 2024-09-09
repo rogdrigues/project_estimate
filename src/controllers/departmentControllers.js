@@ -10,6 +10,7 @@ const cloudinary = require('cloudinary').v2;
 const multer = require('multer');
 const memoryStorage = multer.memoryStorage();
 const upload = multer({ storage: memoryStorage });
+const UserMaster = require('../models/userMaster');
 
 module.exports = {
     addDepartment: async (req, res) => {
@@ -218,8 +219,8 @@ module.exports = {
 
     getAllDepartments: async (req, res) => {
         try {
-            const departments = await Department.find()
-                .populate('division', 'name')
+            const departments = await Department.findWithDeleted()
+                .populate('division', 'code')
                 .populate('lead', 'username email')
                 .sort({ createdAt: -1, deleted: 1 });
 
@@ -303,7 +304,24 @@ module.exports = {
             }));
 
             const workBook = xlsx.utils.book_new();
-            const workSheet = xlsx.utils.json_to_sheet(departmentData);
+            const workSheet = xlsx.utils.json_to_sheet(departmentData, { skipHeader: true });
+
+            const headers = ['Name', 'Description', 'Division', 'Lead', 'Code'];
+            xlsx.utils.sheet_add_aoa(workSheet, [headers], { origin: 'A1' });
+
+            headers.forEach((header, index) => {
+                const cellRef = xlsx.utils.encode_cell({ c: index, r: 0 });
+                if (!workSheet[cellRef]) workSheet[cellRef] = {};
+                workSheet[cellRef].s = { font: { bold: true } };
+            });
+
+            const columnWidths = headers.map((header, i) => ({
+                wch: Math.max(
+                    header.length,
+                    ...departmentData.map(row => (row[header] || '').toString().length)
+                )
+            }));
+            workSheet['!cols'] = columnWidths;
 
             xlsx.utils.book_append_sheet(workBook, workSheet, 'Departments');
 
@@ -311,7 +329,8 @@ module.exports = {
 
             const date = new Date();
             const formattedDate = date.toISOString().slice(0, 10).replace(/-/g, '');
-            const fileName = `departments_export_${formattedDate}.xlsx`;
+            const formattedTime = date.toTimeString().slice(0, 5).replace(/:/g, '');
+            const fileName = `departments_export_${formattedDate}_${formattedTime}.xlsx`;
 
             res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
             res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

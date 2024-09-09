@@ -1,7 +1,7 @@
 const express = require('express');
 const { check } = require('express-validator');
 const authenticateToken = require('../middlewares/authenticateToken');
-const { addDepartment, updateDepartment, getDepartmentById, getAllDepartments, deleteDepartment, restoreDepartment } = require('../controllers/departmentControllers');
+const { addDepartment, updateDepartment, getDepartmentById, getAllDepartments, deleteDepartment, restoreDepartment, exportDepartments, importDepartments } = require('../controllers/departmentControllers');
 const upload = require('../middlewares/cloudinaryUpload');
 
 const router = express.Router();
@@ -18,6 +18,8 @@ router.post(
     addDepartment
 );
 
+router.post('/import-departments', authenticateToken, importDepartments);
+
 router.put(
     '/:id',
     upload.single('logo'),
@@ -30,8 +32,10 @@ router.put(
     updateDepartment
 );
 
-router.delete('/:id', authenticateToken, deleteDepartment);
 router.put('/restore/:id', authenticateToken, restoreDepartment);
+router.delete('/:id', authenticateToken, deleteDepartment);
+
+router.get('/export-departments', authenticateToken, exportDepartments);
 
 router.get('/get-all-department', authenticateToken, getAllDepartments);
 
