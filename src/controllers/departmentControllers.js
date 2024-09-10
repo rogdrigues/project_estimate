@@ -43,12 +43,14 @@ module.exports = {
                 existingDepartment = await Department.findOne({ code: departmentCode });
             }
 
+
             const newDepartment = new Department({
                 name,
                 description,
                 division,
                 lead,
-                code: departmentCode
+                code: departmentCode,
+                logo: req.file ? req.file.path : null
             });
 
             await newDepartment.save();
@@ -121,6 +123,7 @@ module.exports = {
             department.division = division || department.division;
             department.lead = lead || department.lead;
             department.code = departmentCode;
+            department.logo = req.file ? req.file.path : department.logo;
 
             await department.save();
 
