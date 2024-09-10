@@ -24,6 +24,8 @@ router.post(
     addDivision
 );
 
+router.post('/import-divisions', authenticateToken, importDivisions);
+
 router.put(
     '/:id',
     [
@@ -39,10 +41,10 @@ router.delete('/:id', authenticateToken, deleteDivision);
 
 router.get('/get-all-divisions', authenticateToken, getAllDivisions);
 
-router.get('/:id', authenticateToken, getDivisionById);
-
 router.get('/export-divisions', authenticateToken, exportDivisions);
 
-router.post('/import-divisions', authenticateToken, importDivisions);
+router.get('/:id', authenticateToken, getDivisionById);
+
+
 
 module.exports = router;
