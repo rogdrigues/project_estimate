@@ -156,7 +156,7 @@ module.exports = {
     getAllAssumptions: async (req, res) => {
         try {
             const assumptions = await Assumption.findWithDeleted()
-                .populate('category', 'CategoryName')
+                .populate('category')
                 .sort({ createdAt: -1, deleted: 1 });
 
             return res.status(200).json({
@@ -182,7 +182,7 @@ module.exports = {
         try {
             const { id } = req.params;
             const assumption = await Assumption.findById(id)
-                .populate('category', 'CategoryName');
+                .populate('category');
 
             if (!assumption) {
                 return res.status(404).json({
@@ -216,7 +216,7 @@ module.exports = {
     exportAssumptions: async (req, res) => {
         try {
             const assumptions = await Assumption.find()
-                .populate('category', 'CategoryName')
+                .populate('category')
                 .select('title content category')
                 .exec();
 
