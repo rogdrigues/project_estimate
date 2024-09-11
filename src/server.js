@@ -7,30 +7,20 @@ const useMiddlewares = require('./middlewares/middleware');
 // Call middleware.js
 useMiddlewares(app, express);
 //Seed data
-const seedPermissions = require('./seeder/permissionSetSeeder');
-const seedUsers = require('./seeder/userMasterSeeder');
-const seedDivisions = require('./seeder/divisionSeeder');
-const seedDepartments = require('./seeder/departmentSeeder');
+const seedAllData = require('./seeder/index');
+//Routes
+const setRoutes = require('./routes/index');
 //Controller
 const { updateDivisionLeads } = require('./controllers/divisionControllers');
-//Making async so we can use await for mongoose connection
+//await for mongoose connection
 (async () => {
     try {
         //Connect to MongoDB
         await connectDB();
-        //Seeder Data goes here
-        await seedPermissions();
-        await seedDivisions();
-        await seedUsers();
-        //Update division leads
-        await updateDivisionLeads();
-        //Continue Seeder Data from here
-        await seedDepartments();
-        //End Seeder Data
+        //Seeder Data 
+        await seedAllData();
         //Routes
-        app.use('/api/users', require('./routes/userRoutes'));
-        app.use('/api/division', require('./routes/divisionRoutes'));
-        app.use('/api/department', require('./routes/departmentRoutes'));
+        setRoutes(app);
         app.listen(process.env.NODE_PORT, () => {
             console.log(`Server running at http://${process.env.MONGO_HOST}:${process.env.NODE_PORT}/`);
         })
