@@ -111,8 +111,18 @@ module.exports = {
     },
     getAllResources: async (req, res) => {
         try {
+            const { includeDeleted } = req.query;
+
             const sortCriteria = { deleted: 1, createdAt: -1 };
-            const resources = await Resource.findWithDeleted().sort(sortCriteria).exec();
+
+            let resources;
+
+            if (includeDeleted === 'true') {
+                resources = await Resource.findWithDeleted().sort(sortCriteria).exec();
+            } else {
+                resources = await Resource.find().sort(sortCriteria).exec();
+
+            }
 
             return res.status(200).json({
                 EC: 0,

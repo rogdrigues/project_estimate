@@ -7,7 +7,7 @@ const resourceSchema = new mongoose.Schema({
     location: { type: String, required: true },  // Location of the resource 
     level: { type: String, enum: ['Junior', 'Mid', 'Senior'], required: true },  // Level of the resource
     currency: { type: String, required: true },  // Currency used for unitPrice 
-    conversionRate: { type: Number, required: true },  // Conversion rate to USD
+    conversionRate: { type: Number },  // Conversion rate to USD
 }, { timestamps: true });
 
 // Soft delete functionality
