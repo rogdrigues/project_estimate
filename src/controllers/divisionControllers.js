@@ -10,7 +10,7 @@ const cloudinary = require('cloudinary').v2;
 const multer = require('multer');
 const memoryStorage = multer.memoryStorage();
 const upload = multer({ storage: memoryStorage });
-const { sanitizeString } = require('../utils/sanitizer');
+const { sanitizeString } = require('../utils/stringUtils');
 
 module.exports = {
     updateDivisionLeads: async () => {

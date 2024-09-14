@@ -4,7 +4,7 @@ const xlsx = require('xlsx');
 const multer = require('multer');
 const memoryStorage = multer.memoryStorage();
 const upload = multer({ storage: memoryStorage });
-const { sanitizeString } = require('../utils/sanitizer');
+const { sanitizeString } = require('../utils/stringUtils');
 
 module.exports = {
     addCategory: async (req, res) => {

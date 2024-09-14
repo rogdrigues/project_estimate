@@ -13,7 +13,7 @@ const multer = require('multer');
 const memoryStorage = multer.memoryStorage();
 const upload = multer({ storage: memoryStorage });
 const cloudinary = require('cloudinary').v2;
-const { sanitizeString, generateDisplayName } = require('../utils/sanitizeString');
+const { sanitizeString, generateDisplayName } = require('../utils/stringUtils');
 
 module.exports = {
     addNewUser: async (req, res) => {

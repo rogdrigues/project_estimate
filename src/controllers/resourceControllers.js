@@ -4,7 +4,7 @@ const multer = require('multer');
 const memoryStorage = multer.memoryStorage();
 const upload = multer({ storage: memoryStorage });
 const xlsx = require('xlsx');
-const { sanitizeString } = require('../utils/sanitizer');
+const { sanitizeString } = require('../utils/stringUtils');
 
 module.exports = {
     createResource: async (req, res) => {
