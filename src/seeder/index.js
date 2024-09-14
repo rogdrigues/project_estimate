@@ -4,22 +4,19 @@ const seedDivisions = require('./divisionSeeder');
 const seedDepartments = require('./departmentSeeder');
 const seedCategories = require('./categorySeeder');
 const seedAssumptions = require('./assumptionSeeder');
+const seedResources = require('./resourceSeeder');
 const { updateDivisionLeads } = require('../controllers/divisionControllers');
 
 const seedAllData = async () => {
     try {
-        // Seeder Data goes here
         await seedPermissions();
         await seedDivisions();
         await seedUsers();
-        // Update division leads sau khi có dữ liệu
         await updateDivisionLeads();
-        // Continue Seeder Data from here
         await seedDepartments();
-        // Seed Category
         await seedCategories();
-        // Seed Assumptions
         await seedAssumptions();
+        await seedResources();
         console.log("Seeding completed successfully.");
     } catch (error) {
         console.log('Error during seeding:', error.message);
