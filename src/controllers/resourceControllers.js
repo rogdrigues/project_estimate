@@ -5,6 +5,8 @@ const memoryStorage = multer.memoryStorage();
 const upload = multer({ storage: memoryStorage });
 const xlsx = require('xlsx');
 const { sanitizeString } = require('../utils/stringUtils');
+const validator = require('validator');
+const { validationResult } = require('express-validator');
 
 module.exports = {
     createResource: async (req, res) => {
