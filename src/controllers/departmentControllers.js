@@ -11,6 +11,7 @@ const multer = require('multer');
 const memoryStorage = multer.memoryStorage();
 const upload = multer({ storage: memoryStorage });
 const UserMaster = require('../models/userMaster');
+const { sanitizeString } = require('../utils/sanitizer');
 
 module.exports = {
     addDepartment: async (req, res) => {
@@ -28,6 +29,11 @@ module.exports = {
 
         try {
             const { name, description, division, lead, code } = req.body;
+
+            //  Sanitize input
+            name = sanitizeString(name);
+            description = sanitizeString(description);
+
             let departmentCode = code;
 
             if (!departmentCode) {
@@ -222,10 +228,24 @@ module.exports = {
 
     getAllDepartments: async (req, res) => {
         try {
-            const departments = await Department.findWithDeleted()
-                .populate('division', 'code')
-                .populate('lead', 'username email')
-                .sort({ createdAt: -1, deleted: 1 });
+            const { includeDeleted } = req.query;
+            const sortCriteria = { deleted: 1, createdAt: -1 };
+
+            let departments;
+
+            if (includeDeleted === 'true') {
+                departments = await Department.findWithDeleted()
+                    .populate('division', 'name')
+                    .populate('lead', 'username email')
+                    .sort(sortCriteria)
+                    .exec();
+            } else {
+                departments = await Department.find()
+                    .populate('division', 'name')
+                    .populate('lead', 'username email')
+                    .sort(sortCriteria)
+                    .exec();
+            }
 
             return res.status(200).json({
                 EC: 0,

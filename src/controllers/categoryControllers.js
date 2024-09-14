@@ -4,6 +4,7 @@ const xlsx = require('xlsx');
 const multer = require('multer');
 const memoryStorage = multer.memoryStorage();
 const upload = multer({ storage: memoryStorage });
+const { sanitizeString } = require('../utils/sanitizer');
 
 module.exports = {
     addCategory: async (req, res) => {
@@ -21,6 +22,10 @@ module.exports = {
 
         try {
             const { CategoryName, SubCategory } = req.body;
+
+            // Sanitize input
+            CategoryName = sanitizeString(CategoryName);
+            SubCategory = sanitizeString(SubCategory);
 
             // Check for duplicate category name
             const existingCategory = await Category.findOne({ CategoryName });
@@ -76,6 +81,10 @@ module.exports = {
         try {
             const { id } = req.params;
             const { CategoryName, SubCategory } = req.body;
+
+            // Sanitize input
+            CategoryName = sanitizeString(CategoryName);
+            SubCategory = sanitizeString(SubCategory);
 
             const category = await Category.findById(id);
             if (!category) {
@@ -186,7 +195,20 @@ module.exports = {
 
     getAllCategories: async (req, res) => {
         try {
-            const categories = await Category.findWithDeleted().sort({ createdAt: -1, deleted: 1 });
+            const { includeDeleted } = req.query;
+            const sortCriteria = { deleted: 1, createdAt: -1 };
+
+            let categories;
+
+            if (includeDeleted === 'true') {
+                categories = await Category.findWithDeleted()
+                    .sort(sortCriteria)
+                    .exec();
+            } else {
+                categories = await Category.find()
+                    .sort(sortCriteria)
+                    .exec();
+            }
 
             return res.status(200).json({
                 EC: 0,
@@ -311,12 +333,11 @@ module.exports = {
                 const workSheet = workBook.Sheets[workBook.SheetNames[0]];
 
                 const rows = xlsx.utils.sheet_to_json(workSheet, { header: 1 }).slice(1);
-
+                console.log(rows);
                 let errors = [];
 
                 for (let row of rows) {
                     let [CategoryName, SubCategory] = row;
-
                     let category = await Category.findOne({ CategoryName });
 
                     if (category) {

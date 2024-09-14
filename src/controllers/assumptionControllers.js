@@ -155,9 +155,22 @@ module.exports = {
 
     getAllAssumptions: async (req, res) => {
         try {
-            const assumptions = await Assumption.findWithDeleted()
-                .populate('category')
-                .sort({ createdAt: -1, deleted: 1 });
+            const { includeDeleted } = req.query;
+            const sortCriteria = { deleted: 1, createdAt: -1 };
+
+            let assumptions;
+
+            if (includeDeleted === 'true') {
+                assumptions = await Assumption.findWithDeleted()
+                    .populate('category')
+                    .sort(sortCriteria)
+                    .exec();
+            } else {
+                assumptions = await Assumption.find()
+                    .populate('category')
+                    .sort(sortCriteria)
+                    .exec();
+            }
 
             return res.status(200).json({
                 EC: 0,

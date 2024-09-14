@@ -10,6 +10,7 @@ const cloudinary = require('cloudinary').v2;
 const multer = require('multer');
 const memoryStorage = multer.memoryStorage();
 const upload = multer({ storage: memoryStorage });
+const { sanitizeString } = require('../utils/sanitizer');
 
 module.exports = {
     updateDivisionLeads: async () => {
@@ -37,6 +38,11 @@ module.exports = {
 
         try {
             const { name, description, lead, code } = req.body;
+
+            // Sanitize input
+            description = sanitizeString(description);
+            name = sanitizeString(name);
+
             let divisionCode = code;
 
             if (!divisionCode) {
@@ -97,6 +103,11 @@ module.exports = {
         try {
             const { id } = req.params;
             const { name, description, lead, code } = req.body;
+
+            // Sanitize input
+            description = sanitizeString(description);
+            name = sanitizeString(name);
+
             let divisionCode = code;
 
             const division = await Division.findById(id);
@@ -226,9 +237,22 @@ module.exports = {
 
     getAllDivisions: async (req, res) => {
         try {
-            const divisions = await Division.findWithDeleted()
-                .populate('lead', 'username email')
-                .sort({ createdAt: -1, deleted: 1 });
+            const { includeDeleted } = req.query;
+            const sortCriteria = { createdAt: -1, deleted: 1 };
+
+            let divisions;
+
+            if (includeDeleted === 'true') {
+                divisions = await Division.findWithDeleted()
+                    .populate('lead', 'username email')
+                    .sort(sortCriteria)
+                    .exec();
+            } else {
+                divisions = await Division.find()
+                    .populate('lead', 'username email')
+                    .sort(sortCriteria)
+                    .exec();
+            }
 
             return res.status(200).json({
                 EC: 0,
@@ -373,6 +397,10 @@ module.exports = {
 
                 for (let row of rows) {
                     let [name, description, leadUsername, code] = row;
+
+                    // Sanitize input
+                    description = sanitizeString(description);
+                    name = sanitizeString(name);
 
                     const validLead = await UserMaster.findOne({ username: leadUsername });
                     if (!validLead) {

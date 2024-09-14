@@ -5,6 +5,7 @@ const divisionRoutes = require('./divisionRoutes');
 const departmentRoutes = require('./departmentRoutes');
 const assumptionRoutes = require('./assumptionRoutes');
 const categoryRoutes = require('./categoryRoutes');
+const resourceRoutes = require('./resourceRoutes');
 
 const setRoutes = (app) => {
     app.use('/api/users', userRoutes);
@@ -12,6 +13,7 @@ const setRoutes = (app) => {
     app.use('/api/department', departmentRoutes);
     app.use('/api/assumption', assumptionRoutes);
     app.use('/api/category', categoryRoutes);
+    app.use('/api/resource', resourceRoutes);
 };
 
 module.exports = setRoutes;

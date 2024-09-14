@@ -13,14 +13,7 @@ const multer = require('multer');
 const memoryStorage = multer.memoryStorage();
 const upload = multer({ storage: memoryStorage });
 const cloudinary = require('cloudinary').v2;
-
-const generateDisplayName = (username) => {
-    const nameParts = username.split(' ');
-    const lastName = nameParts[nameParts.length - 1];
-    const initials = nameParts.slice(0, -1).map(name => name.charAt(0)).join('');
-    const code = Math.floor(100 + Math.random() * 900);
-    return `${lastName}${initials}${code}`;
-};
+const { sanitizeString, generateDisplayName } = require('../utils/sanitizeString');
 
 module.exports = {
     addNewUser: async (req, res) => {
@@ -37,6 +30,12 @@ module.exports = {
         }
 
         const { email, role, division, department, profile } = req.body;
+
+        //sanitize input
+        email = sanitizeString(email);
+        profile.fullName = sanitizeString(profile.fullName);
+        profile.phoneNumber = sanitizeString(profile.phoneNumber);
+        profile.location = sanitizeString(profile.location);
 
         try {
             // Check if email already exists
@@ -128,6 +127,11 @@ module.exports = {
         const { userId } = req.params;
         const { role, division, department, profile, password } = req.body;
 
+        //sanitize input
+        profile.fullName = sanitizeString(profile.fullName);
+        profile.phoneNumber = sanitizeString(profile.phoneNumber);
+        profile.location = sanitizeString(profile.location);
+
         try {
             const user = await UserMaster.findById(userId)
                 .populate('role')
@@ -213,6 +217,12 @@ module.exports = {
             }
         });
 
+        //sanitize input
+        updateFields['profile.fullName'] = sanitizeString(updateFields['profile.fullName']);
+        updateFields['profile.phoneNumber'] = sanitizeString(updateFields['profile.phoneNumber']);
+        updateFields['profile.location'] = sanitizeString(updateFields['profile.location']);
+
+
         try {
             const user = await UserMaster.findById(userId)
                 .populate('role')
@@ -294,21 +304,28 @@ module.exports = {
     },
     getUsers: async (req, res) => {
         try {
-            const { page = 1, limit = 99 } = req.query;
-
-            const skip = (page - 1) * limit;
-
+            const { includeDeleted } = req.query;
             const sortCriteria = { deleted: 1, createdAt: -1 };
 
-            const users = await UserMaster.findWithDeleted()
-                .populate('role')
-                .populate('division')
-                .populate('department')
-                .sort(sortCriteria)
-                .skip(skip)
-                .limit(parseInt(limit))
-                .select('-password -refreshToken')
-                .exec();
+            let users;
+
+            if (includeDeleted) {
+                users = await UserMaster.findWithDeleted()
+                    .populate('role')
+                    .populate('division')
+                    .populate('department')
+                    .sort(sortCriteria)
+                    .select('-password -refreshToken')
+                    .exec();
+            } else {
+                users = await UserMaster.find()
+                    .populate('role')
+                    .populate('division')
+                    .populate('department')
+                    .sort(sortCriteria)
+                    .select('-password -refreshToken')
+                    .exec();
+            }
 
             const totalUsers = await UserMaster.countDocuments();
 
@@ -316,13 +333,7 @@ module.exports = {
                 EC: 0,
                 message: "Users fetched successfully",
                 data: {
-                    result: users,
-                    pagination: {
-                        total: totalUsers,
-                        page: parseInt(page),
-                        limit: parseInt(limit),
-                        totalPages: Math.ceil(totalUsers / limit)
-                    }
+                    result: users
                 }
             });
 
@@ -430,6 +441,9 @@ module.exports = {
         }
 
         const { email, password } = req.body;
+
+        //sanitize input
+        email = sanitizeString(email);
 
         try {
             let user = await UserMaster.findOneWithDeleted({ email })
@@ -682,6 +696,15 @@ module.exports = {
                 for (let row of rows) {
                     let [fullName, displayName, email, role, division, department] = row;
                     let username = fullName.replace(/\s+/g, '').toLowerCase();
+
+                    //sanitize input
+                    fullName = sanitizeString(fullName);
+                    email = sanitizeString(email);
+                    username = sanitizeString(username);
+                    role = sanitizeString(role);
+                    division = sanitizeString(division);
+                    department = sanitizeString(department);
+
                     displayName = generateDisplayName(fullName);
 
                     let existingUser = await UserMaster.findOne({ email });
