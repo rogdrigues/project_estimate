@@ -17,7 +17,7 @@ const { sanitizeString, generateDisplayName } = require('../utils/stringUtils');
 
 module.exports = {
     addNewUser: async (req, res) => {
-        const errors = validationResult(req.body);
+        const errors = validationResult(req);
         if (!errors.isEmpty()) {
             return res.status(400).json({
                 EC: 1,
@@ -29,7 +29,7 @@ module.exports = {
             });
         }
 
-        const { email, role, division, department, profile } = req.body;
+        let { email, role, division, department, profile } = req.body;
 
         //sanitize input
         email = sanitizeString(email);
@@ -112,7 +112,7 @@ module.exports = {
         }
     },
     updateUser: async (req, res) => {
-        const errors = validationResult(req.body);
+        const errors = validationResult(req);
         if (!errors.isEmpty()) {
             return res.status(400).json({
                 EC: 1,
@@ -125,7 +125,7 @@ module.exports = {
         }
 
         const { userId } = req.params;
-        const { role, division, department, profile, password } = req.body;
+        let { role, division, department, profile, password } = req.body;
 
         //sanitize input
         profile.fullName = sanitizeString(profile.fullName);
@@ -428,7 +428,7 @@ module.exports = {
         }
     },
     loginUser: async (req, res) => {
-        const errors = validationResult(req.body);
+        const errors = validationResult(req);
         if (!errors.isEmpty()) {
             return res.status(400).json({
                 EC: 1,
@@ -440,7 +440,7 @@ module.exports = {
             });
         }
 
-        const { email, password } = req.body;
+        let { email, password } = req.body;
 
         //sanitize input
         email = sanitizeString(email);

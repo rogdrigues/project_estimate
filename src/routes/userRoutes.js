@@ -26,7 +26,6 @@ router.post('/login', [
 ], loginUser);
 
 router.post('/add-user', [
-    check('username', 'Username is required').not().isEmpty(),
     check('email', 'Please include a valid email').isEmail(),
     check('password', 'Please enter a password with 6 or more characters').isLength({ min: 6 }),
     check('role', 'Role is required').not().isEmpty()
@@ -34,7 +33,7 @@ router.post('/add-user', [
 
 router.post('/refresh-token', refreshAccessToken);
 
-router.post('/import-users', authenticateToken, importUsers); // Import users from Excel
+router.post('/import-users', authenticateToken, importUsers);
 
 //patch method
 router.patch('/profile', authenticateToken, upload.single('avatar'), updateUserProfile);
@@ -51,7 +50,7 @@ router.delete('/:userId', authenticateToken, deleteUser);
 router.delete('/restore/:userId', authenticateToken, restoreUser);
 
 //Get method
-router.get('/export-users', authenticateToken, exportUsers); // Export users to Excel
+router.get('/export-users', authenticateToken, exportUsers);
 
 router.get('/roles', authenticateToken, getAllRoles);
 

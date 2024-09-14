@@ -37,7 +37,7 @@ module.exports = {
         }
 
         try {
-            const { name, description, lead, code } = req.body;
+            let { name, description, lead, code } = req.body;
 
             // Sanitize input
             description = sanitizeString(description);
@@ -102,7 +102,7 @@ module.exports = {
 
         try {
             const { id } = req.params;
-            const { name, description, lead, code } = req.body;
+            let { name, description, lead, code } = req.body;
 
             // Sanitize input
             description = sanitizeString(description);

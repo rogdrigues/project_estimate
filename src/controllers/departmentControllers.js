@@ -28,7 +28,7 @@ module.exports = {
         }
 
         try {
-            const { name, description, division, lead, code } = req.body;
+            let { name, description, division, lead, code } = req.body;
 
             //  Sanitize input
             name = sanitizeString(name);
@@ -97,7 +97,7 @@ module.exports = {
 
         try {
             const { id } = req.params;
-            const { name, description, division, lead, code } = req.body;
+            let { name, description, division, lead, code } = req.body;
             let departmentCode = code;
 
             const department = await Department.findById(id);

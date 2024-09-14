@@ -8,18 +8,30 @@ const { sanitizeString } = require('../utils/stringUtils');
 
 module.exports = {
     createResource: async (req, res) => {
-        const { name, unitPrice, location, currency, level } = req.body;
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                EC: 1,
+                message: "Validation failed",
+                data: {
+                    result: null,
+                    errors: errors.array()
+                }
+            });
+        }
+
+        let { name, unitPrice, location, currency, level } = req.body;
 
         try {
-            const sanitizedName = sanitizeString(name);
-            const sanitizedLocation = sanitizeString(location);
+            name = sanitizeString(name);
+            location = sanitizeString(location);
 
             const conversionRate = await getConversionRate(currency);
 
             const newResource = new Resource({
-                name: sanitizedName,
+                name,
                 unitPrice,
-                location: sanitizedLocation,
+                location,
                 level,
                 currency,
                 conversionRate
@@ -42,8 +54,20 @@ module.exports = {
     },
 
     updateResource: async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                EC: 1,
+                message: "Validation failed",
+                data: {
+                    result: null,
+                    errors: errors.array()
+                }
+            });
+        }
+
         const { id } = req.params;
-        const { name, unitPrice, location, currency, level } = req.body;
+        let { name, unitPrice, location, currency, level } = req.body;
 
         try {
             const resource = await Resource.findById(id);

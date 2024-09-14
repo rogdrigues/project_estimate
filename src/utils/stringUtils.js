@@ -1,5 +1,8 @@
 const sanitizeString = (str) => {
-    return str.trim();
+    if (str === null || str === undefined) {
+        return str;
+    }
+    return str.trim().replace(/\s+/g, ' ');
 };
 
 const generateDisplayName = (username) => {

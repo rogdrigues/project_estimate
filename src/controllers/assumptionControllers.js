@@ -7,6 +7,18 @@ const upload = multer({ storage: memoryStorage });
 
 module.exports = {
     addAssumption: async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                EC: 1,
+                message: "Validation failed",
+                data: {
+                    result: null,
+                    errors: errors.array()
+                }
+            });
+        }
+
         const { title, content, category } = req.body;
 
         try {
@@ -38,6 +50,18 @@ module.exports = {
     },
 
     updateAssumption: async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                EC: 1,
+                message: "Validation failed",
+                data: {
+                    result: null,
+                    errors: errors.array()
+                }
+            });
+        }
+
         const { id } = req.params;
         const { title, content, category } = req.body;
 

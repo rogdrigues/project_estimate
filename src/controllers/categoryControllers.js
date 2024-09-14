@@ -21,7 +21,7 @@ module.exports = {
         }
 
         try {
-            const { CategoryName, SubCategory } = req.body;
+            let { CategoryName, SubCategory } = req.body;
 
             // Sanitize input
             CategoryName = sanitizeString(CategoryName);
@@ -80,7 +80,7 @@ module.exports = {
 
         try {
             const { id } = req.params;
-            const { CategoryName, SubCategory } = req.body;
+            let { CategoryName, SubCategory } = req.body;
 
             // Sanitize input
             CategoryName = sanitizeString(CategoryName);
