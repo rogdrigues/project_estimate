@@ -254,6 +254,7 @@ module.exports = {
         try {
             const assumptions = await Assumption.find()
                 .populate('category')
+                .sort({ createdAt: -1 })
                 .select('title content category')
                 .exec();
 
@@ -268,6 +269,7 @@ module.exports = {
 
             const headers = ['Title', 'Content', 'Category'];
             xlsx.utils.sheet_add_aoa(workSheet, [headers], { origin: 'A1' });
+            xlsx.utils.sheet_add_json(workSheet, assumptionData, { skipHeader: true, origin: 'A2' });
 
             headers.forEach((header, index) => {
                 const cellRef = xlsx.utils.encode_cell({ c: index, r: 0 });

@@ -320,6 +320,7 @@ module.exports = {
         try {
             const divisions = await Division.find()
                 .populate('lead', 'username email')
+                .sort({ createdAt: -1 })
                 .select('name description lead code')
                 .exec();
 
@@ -335,7 +336,7 @@ module.exports = {
 
             const headers = ['Name', 'Description', 'Lead', 'Code'];
             xlsx.utils.sheet_add_aoa(workSheet, [headers], { origin: 'A1' });
-
+            xlsx.utils.sheet_add_json(workSheet, divisionData, { skipHeader: true, origin: 'A2' });
             headers.forEach((header, index) => {
                 const cellRef = xlsx.utils.encode_cell({ c: index, r: 0 });
                 if (!workSheet[cellRef]) workSheet[cellRef] = {};

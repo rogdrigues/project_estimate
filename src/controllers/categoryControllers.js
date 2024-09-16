@@ -265,7 +265,10 @@ module.exports = {
 
     exportCategories: async (req, res) => {
         try {
-            const categories = await Category.find().select('CategoryName SubCategory').exec();
+            const categories = await Category.find()
+                .sort({ createdAt: -1 })
+                .select('CategoryName SubCategory')
+                .exec();
 
             const categoryData = categories.map(category => ({
                 CategoryName: category.CategoryName,
@@ -277,7 +280,7 @@ module.exports = {
 
             const headers = ['CategoryName', 'SubCategory'];
             xlsx.utils.sheet_add_aoa(workSheet, [headers], { origin: 'A1' });
-
+            xlsx.utils.book_append_sheet(workBook, workSheet, 'Categories');
             headers.forEach((header, index) => {
                 const cellRef = xlsx.utils.encode_cell({ c: index, r: 0 });
                 if (!workSheet[cellRef]) workSheet[cellRef] = {};

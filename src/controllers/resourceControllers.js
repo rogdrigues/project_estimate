@@ -123,7 +123,6 @@ module.exports = {
                 resources = await Resource.findWithDeleted().sort(sortCriteria).exec();
             } else {
                 resources = await Resource.find().sort(sortCriteria).exec();
-
             }
 
             return res.status(200).json({
@@ -226,8 +225,10 @@ module.exports = {
     },
     exportResources: async (req, res) => {
         try {
-            const resources = await Resource.find().select('name unitPrice location level currency conversionRate').exec();
-
+            const resources = await Resource.find()
+                .sort({ createdAt: -1 })
+                .select('name unitPrice location level currency conversionRate')
+                .exec();
             const resourceData = resources.map(resource => ({
                 Name: resource.name,
                 UnitPrice: resource.unitPrice,
@@ -237,11 +238,14 @@ module.exports = {
                 ConversionRate: resource.conversionRate
             }));
 
+
             const workBook = xlsx.utils.book_new();
             const workSheet = xlsx.utils.json_to_sheet(resourceData, { skipHeader: true });
 
             const headers = ['Name', 'UnitPrice', 'Location', 'Level', 'Currency', 'ConversionRate'];
             xlsx.utils.sheet_add_aoa(workSheet, [headers], { origin: 'A1' });
+
+            xlsx.utils.sheet_add_json(workSheet, resourceData, { skipHeader: true, origin: 'A2' });
 
             headers.forEach((header, index) => {
                 const cellRef = xlsx.utils.encode_cell({ c: index, r: 0 });
@@ -255,6 +259,7 @@ module.exports = {
                     ...resourceData.map(row => (row[header] || '').toString().length)
                 )
             }));
+
             workSheet['!cols'] = columnWidths;
 
             xlsx.utils.book_append_sheet(workBook, workSheet, 'Resources');
