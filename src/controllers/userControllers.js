@@ -623,11 +623,11 @@ module.exports = {
             const workBook = xlsx.utils.book_new();
             const workSheet = xlsx.utils.json_to_sheet(userData, { skipHeader: true });
 
-
             // Add headers (in bold)
             const headers = ['Username', 'DisplayName', 'Email', 'Role', 'Division', 'Department'];
             xlsx.utils.sheet_add_aoa(workSheet, [headers], { origin: 'A1' });
             xlsx.utils.sheet_add_json(workSheet, userData, { skipHeader: true, origin: 'A2' });
+
             // Apply styles to the headers (bold)
             headers.forEach((header, index) => {
                 const cellRef = xlsx.utils.encode_cell({ c: index, r: 0 });  // Cell reference (e.g., A1, B1, etc.)
