@@ -18,7 +18,7 @@ router.post(
     '/add-technology',
     [
         check('name', 'Technology name is required').not().isEmpty(),
-        check('version', 'Version is required').not().isEmpty(),
+        check('category', 'Category is required').not().isEmpty(),
     ],
     authenticateToken,
     createTechnology
@@ -28,7 +28,7 @@ router.put(
     '/:id',
     [
         check('name', 'Technology name is required').not().isEmpty(),
-        check('version', 'Version is required').not().isEmpty(),
+        check('category', 'Category is required').not().isEmpty(),
     ],
     authenticateToken,
     updateTechnology
