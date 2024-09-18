@@ -14,6 +14,7 @@ const memoryStorage = multer.memoryStorage();
 const upload = multer({ storage: memoryStorage });
 const cloudinary = require('cloudinary').v2;
 const { sanitizeString, generateDisplayName } = require('../utils/stringUtils');
+const { isValidEmail } = require('../utils/validInput');
 
 module.exports = {
     addNewUser: async (req, res) => {
@@ -705,8 +706,12 @@ module.exports = {
                     role = sanitizeString(role);
                     division = sanitizeString(division);
                     department = sanitizeString(department);
-
                     displayName = generateDisplayName(fullName);
+
+                    if (!isValidEmail(email)) {
+                        errors.push({ row, message: `Invalid email format for ${email}` });
+                        continue;
+                    }
 
                     let existingUser = await UserMaster.findOne({ email });
                     if (existingUser) {

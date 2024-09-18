@@ -1,13 +1,10 @@
 const express = require('express');
 const { check } = require('express-validator');
 const authenticateToken = require('../middlewares/authenticateToken');
-const { addDepartment, updateDepartment, getDepartmentById, getAllDepartments, deleteDepartment, restoreDepartment, exportDepartments, importDepartments } = require('../controllers/departmentControllers');
+const { addDepartment, updateDepartment, getDepartmentById, getAllDepartments, deleteDepartment, restoreDepartment, exportDepartments, importDepartments, getDepartmentLeads } = require('../controllers/departmentControllers');
 const upload = require('../middlewares/cloudinaryUpload');
-
 const router = express.Router();
 
-
-//Post method
 router.post(
     '/add-department',
     upload.single('logo'),
@@ -22,7 +19,6 @@ router.post(
 
 router.post('/import-departments', authenticateToken, importDepartments);
 
-//Put method
 router.put(
     '/:id',
     upload.single('logo'),
@@ -37,13 +33,13 @@ router.put(
 
 router.put('/restore/:id', authenticateToken, restoreDepartment);
 
-//delete department
 router.delete('/:id', authenticateToken, deleteDepartment);
 
-//Get method 
 router.get('/export-departments', authenticateToken, exportDepartments);
 
 router.get('/get-all-department', authenticateToken, getAllDepartments);
+
+router.get('/department-leads', authenticateToken, getDepartmentLeads);
 
 router.get('/:id', authenticateToken, getDepartmentById);
 

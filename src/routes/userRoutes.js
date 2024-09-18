@@ -40,8 +40,6 @@ router.patch('/profile', authenticateToken, upload.single('avatar'), updateUserP
 
 //Put Method
 router.put('/:userId', [
-    check('username', 'Username is required').not().isEmpty(),
-    check('email', 'Please include a valid email').isEmail(),
     check('role', 'Role is required').not().isEmpty()
 ], authenticateToken, updateUser);
 

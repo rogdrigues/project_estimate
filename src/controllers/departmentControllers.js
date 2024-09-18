@@ -5,6 +5,7 @@ const { validationResult } = require('express-validator');
 const { get } = require('mongoose');
 const Department = require('../models/department');
 const Division = require('../models/division');
+const PermissionSet = require('../models/permissionSet');
 const xlsx = require('xlsx');
 const cloudinary = require('cloudinary').v2;
 const multer = require('multer');
@@ -30,14 +31,12 @@ module.exports = {
         try {
             let { name, description, division, lead, code } = req.body;
 
-            //  Sanitize input
-            name = sanitizeString(name);
             description = sanitizeString(description);
 
             let departmentCode = code;
 
             if (!departmentCode) {
-                const nameWords = name.split(' ');
+                const nameWords = name.trim().split(/\s+/);
                 departmentCode = nameWords.map(word => word[0].toUpperCase()).join('');
             }
 
@@ -48,7 +47,6 @@ module.exports = {
                 departmentCode = `${departmentCode}${randomSuffix}`;
                 existingDepartment = await Department.findOne({ code: departmentCode });
             }
-
 
             const newDepartment = new Department({
                 name,
@@ -79,9 +77,6 @@ module.exports = {
             });
         }
     },
-
-
-
     updateDepartment: async (req, res) => {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
@@ -112,7 +107,7 @@ module.exports = {
             }
 
             if (!departmentCode) {
-                const nameWords = name.split(' ');
+                const nameWords = name.trim().split(/\s+/);
                 departmentCode = nameWords.map(word => word[0].toUpperCase()).join('');
             }
 
@@ -235,13 +230,13 @@ module.exports = {
 
             if (includeDeleted === 'true') {
                 departments = await Department.findWithDeleted()
-                    .populate('division', 'name')
+                    .populate('division')
                     .populate('lead', 'username email')
                     .sort(sortCriteria)
                     .exec();
             } else {
                 departments = await Department.find()
-                    .populate('division', 'name')
+                    .populate('division')
                     .populate('lead', 'username email')
                     .sort(sortCriteria)
                     .exec();
@@ -262,6 +257,40 @@ module.exports = {
                     result: null,
                     error: error.message
                 }
+            });
+        }
+    },
+
+    getDepartmentLeads: async (req, res) => {
+        try {
+            const departmentLeadRole = await PermissionSet.findOne({ roleName: 'Department Lead' });
+
+            if (!departmentLeadRole) {
+                return res.status(404).json({
+                    EC: 1,
+                    message: 'Department Lead role not found',
+                    data: { result: null }
+                });
+            }
+
+            //sort by name
+            const departmentLeads = await UserMaster.find({ role: departmentLeadRole._id })
+                .populate('department')
+                .populate('role')
+                .sort({ username: 1 })
+                .select('-password -refreshToken')
+                .exec();
+
+            return res.status(200).json({
+                EC: 0,
+                message: 'Department Leads fetched successfully',
+                data: { result: departmentLeads }
+            });
+        } catch (error) {
+            return res.status(500).json({
+                EC: 1,
+                message: 'Error fetching Department Leads',
+                data: { result: null, error: error.message }
             });
         }
     },
@@ -403,6 +432,14 @@ module.exports = {
                     const validLead = await UserMaster.findOne({ username: leadUsername });
                     if (!validLead) {
                         errors.push({ row, message: `Lead ${leadUsername} does not exist.` });
+                        continue;
+                    }
+
+                    if (leadUser.role.roleName !== 'Department Lead') {
+                        errors.push({
+                            row,
+                            message: `User ${leadUsername} is not a Department Lead.`
+                        });
                         continue;
                     }
 

@@ -23,13 +23,12 @@ module.exports = {
         const { productivity, technology, norm, unit } = req.body;
 
         try {
-            const sanitizedTechnology = sanitizeString(technology);
             const sanitizedNorm = sanitizeString(norm);
             const sanitizedUnit = sanitizeString(unit);
 
             const newProductivity = new Productivity({
                 productivity,
-                technology: sanitizedTechnology,
+                technology: technology._id,
                 norm: sanitizedNorm,
                 unit: sanitizedUnit
             });
@@ -76,12 +75,12 @@ module.exports = {
                 });
             }
 
-            const sanitizedTechnology = sanitizeString(technology);
+
             const sanitizedNorm = sanitizeString(norm);
             const sanitizedUnit = sanitizeString(unit);
 
             prod.productivity = productivity || prod.productivity;
-            prod.technology = sanitizedTechnology || prod.technology;
+            prod.technology = technology._id || prod.technology._id;
             prod.norm = sanitizedNorm || prod.norm;
             prod.unit = sanitizedUnit || prod.unit;
 

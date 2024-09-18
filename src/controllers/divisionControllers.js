@@ -5,6 +5,7 @@ const { validationResult } = require('express-validator');
 const { get } = require('mongoose');
 const UserMaster = require('../models/userMaster');
 const Division = require('../models/division');
+const PermissionSet = require('../models/permissionSet');
 const xlsx = require('xlsx');
 const cloudinary = require('cloudinary').v2;
 const multer = require('multer');
@@ -238,7 +239,7 @@ module.exports = {
     getAllDivisions: async (req, res) => {
         try {
             const { includeDeleted } = req.query;
-            const sortCriteria = { createdAt: -1, deleted: 1 };
+            const sortCriteria = { deleted: 1, createdAt: -1 };
 
             let divisions;
 
@@ -269,6 +270,40 @@ module.exports = {
                     result: null,
                     error: error.message
                 }
+            });
+        }
+    },
+
+    getDivisionLeads: async (req, res) => {
+        try {
+            const divisionLeadRole = await PermissionSet.findOne({ roleName: 'Division Lead' });
+
+            if (!divisionLeadRole) {
+                return res.status(404).json({
+                    EC: 1,
+                    message: 'Division Lead role not found',
+                    data: { result: null }
+                });
+            }
+
+            //sort by name
+            const divisionLeads = await UserMaster.find({ role: divisionLeadRole._id })
+                .populate('division')
+                .populate('role')
+                .sort({ username: 1 })
+                .select('-password -refreshToken')
+                .exec();
+
+            return res.status(200).json({
+                EC: 0,
+                message: 'Division Leads fetched successfully',
+                data: { result: divisionLeads }
+            });
+        } catch (error) {
+            return res.status(500).json({
+                EC: 1,
+                message: 'Error fetching Division Leads',
+                data: { result: null, error: error.message }
             });
         }
     },
@@ -406,6 +441,14 @@ module.exports = {
                     const validLead = await UserMaster.findOne({ username: leadUsername });
                     if (!validLead) {
                         errors.push({ row, message: `Lead ${leadUsername} does not exist.` });
+                        continue;
+                    }
+
+                    if (leadUser.role.roleName !== 'Division Lead') {
+                        errors.push({
+                            row,
+                            message: `User ${leadUsername} is not a Division Lead.`
+                        });
                         continue;
                     }
 

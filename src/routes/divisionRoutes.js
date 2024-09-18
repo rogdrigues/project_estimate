@@ -9,7 +9,9 @@ const {
     getAllDivisions,
     getDivisionById,
     exportDivisions,
-    importDivisions
+    importDivisions,
+    restoreDivision,
+    getDivisionLeads
 } = require('../controllers/divisionControllers');
 const router = express.Router();
 
@@ -37,14 +39,16 @@ router.put(
     updateDivision
 );
 
+router.put('/restore/:id', authenticateToken, restoreDivision);
+
 router.delete('/:id', authenticateToken, deleteDivision);
 
 router.get('/get-all-divisions', authenticateToken, getAllDivisions);
 
 router.get('/export-divisions', authenticateToken, exportDivisions);
 
+router.get('/division-leads', authenticateToken, getDivisionLeads);
+
 router.get('/:id', authenticateToken, getDivisionById);
-
-
 
 module.exports = router;

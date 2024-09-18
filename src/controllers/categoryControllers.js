@@ -294,9 +294,6 @@ module.exports = {
                 )
             }));
             workSheet['!cols'] = columnWidths;
-
-            xlsx.utils.book_append_sheet(workBook, workSheet, 'Categories');
-
             const buffer = xlsx.write(workBook, { type: 'buffer', bookType: 'xlsx' });
 
             const date = new Date();
@@ -336,7 +333,7 @@ module.exports = {
                 const workSheet = workBook.Sheets[workBook.SheetNames[0]];
 
                 const rows = xlsx.utils.sheet_to_json(workSheet, { header: 1 }).slice(1);
-                console.log(rows);
+
                 let errors = [];
 
                 for (let row of rows) {
