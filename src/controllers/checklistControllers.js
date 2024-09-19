@@ -1,10 +1,11 @@
 const Checklist = require('../models/checklist');
 const { validationResult } = require('express-validator');
-const sanitizeString = require('../utils/stringUtils');
+const { sanitizeString } = require('../utils/stringUtils');
 const xlsx = require('xlsx');
 const multer = require('multer');
 const memoryStorage = multer.memoryStorage();
 const upload = multer({ storage: memoryStorage });
+const Category = require('../models/category');
 
 module.exports = {
     createChecklist: async (req, res) => {
@@ -28,15 +29,15 @@ module.exports = {
             let parentID = null;
 
             if (!existingSubClasses.length) {
-                parentID = 1;  // Category chưa có checklist nào, parentID = 1
+                parentID = 1;
             } else {
                 const existingSubClass = existingSubClasses.find(cl => cl.subClass === subClass);
 
                 if (existingSubClass) {
-                    parentID = existingSubClass.parentID;  // Sử dụng parentID có sẵn
+                    parentID = existingSubClass.parentID;
                 } else {
                     const maxParentId = Math.max(...existingSubClasses.map(cl => cl.parentID));
-                    parentID = maxParentId + 1;  // Tạo parentID mới
+                    parentID = maxParentId + 1;
                 }
             }
 
@@ -46,8 +47,8 @@ module.exports = {
                 category,
                 parentID,
                 subClass: sanitizeString(subClass),
-                note: sanitizeString(note),
-                assessment: sanitizeString(assessment),
+                note,
+                assessment,
                 priority
             });
 
@@ -115,8 +116,8 @@ module.exports = {
             checklist.description = sanitizeString(description) || checklist.description;
             checklist.category = category || checklist.category;
             checklist.subClass = sanitizeString(subClass) || checklist.subClass;
-            checklist.note = sanitizeString(note) || checklist.note;
-            checklist.assessment = sanitizeString(assessment) || checklist.assessment;
+            checklist.note = note || checklist.note;
+            checklist.assessment = assessment || checklist.assessment;
             checklist.priority = priority || checklist.priority;
             checklist.parentID = parentID;
 
@@ -266,12 +267,18 @@ module.exports = {
 
             const workBook = xlsx.utils.book_new();
             const workSheet = xlsx.utils.json_to_sheet([], { skipHeader: true });
-            xlsx.utils.sheet_add_aoa(workSheet, [['Name', 'Category', 'ParentID', 'SubClass', 'Description', 'Note', 'Assessment', 'Priority']], { origin: 'A1' });
+            xlsx.utils.sheet_add_aoa(workSheet, [['Name', 'Category', 'SubClass', 'Description', 'Note', 'Assessment', 'Priority']], { origin: 'A1' });
             xlsx.utils.sheet_add_json(workSheet, checklistData, { skipHeader: true, origin: 'A2' });
 
-            const columnWidths = ['Name', 'Category', 'ParentID', 'SubClass', 'Description', 'Note', 'Assessment', 'Priority'].map(header => ({
-                wch: Math.max(header.length, ...checklistData.map(row => (row[header] || '').toString().length))
-            }));
+            const columnWidths = [
+                { wch: Math.max('Name'.length, ...checklistData.map(row => row.Name.length)) },
+                { wch: Math.max('Category'.length, ...checklistData.map(row => row.Category.length)) },
+                { wch: Math.max('SubClass'.length, ...checklistData.map(row => row.SubClass.length)) },
+                { wch: Math.max('Description'.length, ...checklistData.map(row => row.Description.length)) },
+                { wch: Math.max('Note'.length, ...checklistData.map(row => row.Note.length)) },
+                { wch: Math.max('Assessment'.length, ...checklistData.map(row => row.Assessment.length)) },
+                { wch: Math.max('Priority'.length, ...checklistData.map(row => row.Priority.length)) }
+            ];
             workSheet['!cols'] = columnWidths;
 
             xlsx.utils.book_append_sheet(workBook, workSheet, 'Checklists');
@@ -315,7 +322,7 @@ module.exports = {
                 let errors = [];
 
                 for (let row of rows) {
-                    let [name, subClass, categoryName, note, assessment, priority] = row;
+                    let [name, categoryName, subClass, description, note, assessment, priority] = row;
 
                     if (!name || !categoryName) {
                         errors.push({
@@ -357,6 +364,7 @@ module.exports = {
 
                     if (checklist) {
                         checklist.subClass = subClass || checklist.subClass;
+                        checklist.description = description || checklist.description;
                         checklist.note = note || checklist.note;
                         checklist.assessment = assessment || checklist.assessment;
                         checklist.priority = priority || checklist.priority;
@@ -365,6 +373,7 @@ module.exports = {
                         checklist = new Checklist({
                             name,
                             subClass,
+                            description,
                             category: category._id,
                             note,
                             assessment,
@@ -376,6 +385,7 @@ module.exports = {
                     await checklist.save();
                 }
 
+                // Trả về file lỗi nếu có
                 if (errors.length > 0) {
                     const errorWorkBook = xlsx.utils.book_new();
                     const errorSheetData = errors.map(error => ({
@@ -384,7 +394,6 @@ module.exports = {
                     }));
 
                     const errorWorkSheet = xlsx.utils.json_to_sheet(errorSheetData);
-
                     xlsx.utils.book_append_sheet(errorWorkBook, errorWorkSheet, 'Errors');
 
                     const errorBuffer = xlsx.write(errorWorkBook, { type: 'buffer', bookType: 'xlsx' });
@@ -411,4 +420,5 @@ module.exports = {
             }
         }
     ]
+
 };
