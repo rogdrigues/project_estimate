@@ -12,7 +12,6 @@ const seedPermissions = async () => {
                         'view_projects',
                         'view_dashboard',
                         'manage_users',
-                        'view_projects',
                         'manage_department',
                         'manage_division',
                         'manage_categories',
@@ -68,7 +67,7 @@ const seedPermissions = async () => {
             {
                 roleName: 'Opportunity',
                 permissions: [
-                    'manage_opportunity',
+                    'view_opportunity', // Can only view opportunities they are working on or had been assigned to
                     'manage_projects',
                     'manage_categories',
                     'manage_assumptions',
@@ -83,6 +82,7 @@ const seedPermissions = async () => {
             {
                 roleName: 'Presale Division',
                 permissions: [
+                    'manage_presale_plan',
                     'manage_opportunity',
                     'view_projects',
                     'project_review', // Allows reviewing when someone sends a project for review from an opportunity perspective
@@ -92,6 +92,7 @@ const seedPermissions = async () => {
                     'manage_assumptions',
                     'manage_checklists',
                     'manage_technology',
+                    'view_template',
                     'view_division_profile',
                     'view_userprofile'
                 ]
@@ -99,6 +100,7 @@ const seedPermissions = async () => {
             {
                 roleName: 'Presale Department',
                 permissions: [
+                    'manage_presale_plan',
                     'manage_opportunity',
                     'view_projects',
                     'project_review',
@@ -108,6 +110,7 @@ const seedPermissions = async () => {
                     'manage_assumptions',
                     'manage_checklists',
                     'manage_technology',
+                    'view_template',
                     'view_department_profile',
                     'view_userprofile'
                 ]
@@ -116,6 +119,7 @@ const seedPermissions = async () => {
                 roleName: 'Employee',
                 permissions: [
                     'view_projects',
+                    'view_categories',
                     'view_dashboard',
                     'view_userprofile',
                     'view_productivity',

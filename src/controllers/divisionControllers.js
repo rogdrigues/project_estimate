@@ -20,8 +20,11 @@ module.exports = {
         //Update division leads
         await Promise.all(users.map(async user => {
             const division = await Division.findById(user.division);
-            division.lead = user._id;
-            await division.save();
+            //if division is null we can ignore
+            if (division != null) {
+                division.lead = user._id;
+                await division.save();
+            }
         }));
     },
     addDivision: async (req, res) => {

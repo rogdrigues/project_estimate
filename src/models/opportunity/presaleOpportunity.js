@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const mongooseDelete = require('mongoose-delete');
 
 const opportunitySchema = new mongoose.Schema({
     name: { type: String, required: true },
@@ -6,11 +7,21 @@ const opportunitySchema = new mongoose.Schema({
     description: { type: String },
     division: { type: mongoose.Schema.Types.ObjectId, ref: 'Division', required: true },
     department: { type: mongoose.Schema.Types.ObjectId, ref: 'Department' },
-    timeline: { type: String },
+    timeline: { type: Date, required: true },
     scope: { type: String },
     budget: { type: Number },
-    status: { type: String, enum: ['Open', 'In Progress', 'Closed'], default: 'Open' }
+    status: { type: String, enum: ['Open', 'In Progress', 'Closed'], default: 'Open' },
     category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true },
+    opportunityLead: { type: mongoose.Schema.Types.ObjectId, ref: 'UserMaster', required: true },
+    nation: { type: String, required: true },
+    moneyType: { type: String, required: true },
+    approvalStatus: { type: String, enum: ['Pending', 'Approved', 'Rejected'], default: 'Pending' },
+    approvalComment: { type: String }, // Optional comment from the Opportunity Lead.
+    approvalDate: { type: Date },      // The date when the approval or rejection happens.
+    stage: { type: String, enum: ['New', 'In Review', 'Approved', 'Rejected'], default: 'New' },
+    version: { type: Number, default: 1 }  // Increment version for new revisions after rejection.
 }, { timestamps: true });
+
+opportunitySchema.plugin(mongooseDelete, { deletedAt: true, overrideMethods: 'all' });
 
 module.exports = mongoose.model('Opportunity', opportunitySchema);

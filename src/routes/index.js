@@ -9,6 +9,7 @@ const resourceRoutes = require('./resourceRoutes');
 const technologyRoutes = require('./technologyRoutes');
 const productivityRoutes = require('./productivityRoutes');
 const checklistRoutes = require('./checklistRoutes');
+const presaleOpportunityRoutes = require('./presaleOpportunityRoutes');
 
 const setRoutes = (app) => {
     app.use('/api/users', userRoutes);
@@ -20,6 +21,7 @@ const setRoutes = (app) => {
     app.use('/api/technology', technologyRoutes);
     app.use('/api/productivity', productivityRoutes);
     app.use('/api/checklist', checklistRoutes);
+    app.use('/api/opportunity', presaleOpportunityRoutes);
 };
 
 module.exports = setRoutes;

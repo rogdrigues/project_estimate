@@ -1,11 +1,12 @@
 const mongoose = require('mongoose');
+const mongooseDelete = require('mongoose-delete');
 
-const presalePlanCommentsSchema = new mongoose.Schema({
-    presalePlanVersion: { type: mongoose.Schema.Types.ObjectId, ref: 'PresalePlanVersion', required: true },
-    commentText: { type: String, required: true }, // The comment text
-    commentType: { type: String, enum: ['Note', 'Question', 'Feedback'], required: true },
-    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserMaster', required: true },
-    updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserMaster' }
+const presalePlanCommentSchema = new mongoose.Schema({
+    presalePlan: { type: mongoose.Schema.Types.ObjectId, ref: 'PresalePlan', required: true },  // Reference to the presale plan
+    comment: { type: String, required: true },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserMaster', required: true },  // User who added the comment
 }, { timestamps: true });
 
-module.exports = mongoose.model('PresalePlanComments', presalePlanCommentsSchema);
+presalePlanCommentSchema.plugin(mongooseDelete, { deletedAt: true, overrideMethods: 'all' });
+
+module.exports = mongoose.model('PresalePlanComment', presalePlanCommentSchema);
