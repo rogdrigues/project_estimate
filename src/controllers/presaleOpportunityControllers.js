@@ -444,21 +444,25 @@ module.exports = {
                 });
             }
 
+            if (approvalStatus === 'Approved') {
+                opportunity.version = Math.floor(opportunity.version) + 1;
+            } else if (approvalStatus === 'Rejected') {
+                const decimalPart = opportunity.version % 1;
+                const newDecimalPart = decimalPart === 0 ? 0.1 : decimalPart + 0.1;
+                opportunity.version = Math.floor(opportunity.version) + newDecimalPart;
+            }
+
+            opportunity.approvalStatus = approvalStatus;
+
             const newVersion = new OpportunityVersion({
                 opportunity: opportunity._id,
                 approvalStatus,
                 comment: comment || '',
                 createdBy: userId,
+                version: opportunity.version
             });
 
             await newVersion.save();
-
-            if (approvalStatus === 'Approved') {
-                opportunity.approvalStatus = 'Approved';
-            } else if (approvalStatus === 'Rejected') {
-                opportunity.approvalStatus = 'Rejected';
-            }
-
             await opportunity.save();
 
             return res.status(200).json({
@@ -475,4 +479,5 @@ module.exports = {
             });
         }
     }
+
 };

@@ -11,7 +11,8 @@ const {
     deleteOpportunity,
     restoreOpportunity,
     getOpportunityLead,
-    updateApprovalStatus
+    updateApprovalStatus,
+    updateOpportunityAfterRejection
 } = require('../controllers/presaleOpportunityControllers');
 
 router.post('/create', authenticateToken, [
@@ -40,5 +41,6 @@ router.put('/restore/:id', authenticateToken, restoreOpportunity);
 
 router.put('/approve/:id', authenticateToken, updateApprovalStatus);
 
+router.put('/update-rejection/:id', authenticateToken, updateOpportunityAfterRejection);
 
 module.exports = router;
