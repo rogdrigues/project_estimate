@@ -18,7 +18,6 @@ const opportunitySchema = new mongoose.Schema({
     approvalStatus: { type: String, enum: ['Pending', 'Approved', 'Rejected'], default: 'Pending' },
     approvalComment: { type: String }, // Optional comment from the Opportunity Lead.
     approvalDate: { type: Date },      // The date when the approval or rejection happens.
-    stage: { type: String, enum: ['New', 'In Review', 'Approved', 'Rejected'], default: 'New' },
     version: { type: Number, default: 1 }  // Increment version for new revisions after rejection.
 }, { timestamps: true });
 

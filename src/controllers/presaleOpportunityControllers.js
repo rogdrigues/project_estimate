@@ -4,7 +4,7 @@ const { validationResult } = require('express-validator');
 const { sanitizeString } = require('../utils/stringUtils');
 const moment = require('moment');
 const PermissionSet = require('../models/permissionSet');
-
+const OpportunityVersion = require('../models/opportunity/presaleOpportunityVersion');
 module.exports = {
     createOpportunity: async (req, res) => {
         const errors = validationResult(req);
@@ -16,9 +16,19 @@ module.exports = {
             });
         }
 
-        const { name, customerName, description, division, department, opportunityLead, timeline, scope, budget, category, nation, moneyType } = req.body;
+        const { name, customerName, description, department, opportunityLead, timeline, scope, budget, status, category, nation, moneyType } = req.body;
 
         try {
+            const user = await UserMaster.findById(req.user.id).populate('role division department');
+
+            if (user.role.roleName !== 'Presale Division' && user.role.roleName !== 'Presale Department') {
+                return res.status(403).json({
+                    EC: 1,
+                    message: 'Unauthorized',
+                    data: { result: 'You do not have permission to create an Opportunity.' }
+                });
+            }
+
             const lead = await UserMaster.findById(opportunityLead).populate('role');
             if (!lead || lead.role.roleName !== 'Opportunity') {
                 return res.status(400).json({
@@ -38,26 +48,41 @@ module.exports = {
                 });
             }
 
+            let division, dept = department;
+            if (user.role.roleName === 'Presale Division') {
+                division = user.division._id;
+                dept = null;
+            } else if (user.role.roleName === 'Presale Department') {
+                division = user.division._id;
+                dept = user.department._id;
+            }
+
             const newOpportunity = new Opportunity({
                 name: sanitizeString(name),
                 customerName: sanitizeString(customerName),
                 description: sanitizeString(description),
                 division,
-                department,
+                department: dept,
                 opportunityLead,
                 timeline: sanitizeString(timeline),
                 scope: sanitizeString(scope),
                 budget,
-                status: 'Open',
+                status,
                 category,
                 nation: sanitizeString(nation),
-                moneyType: sanitizeString(moneyType),
-                approvalStatus: 'Pending',  // New: default approval status
-                stage: 'New',                // New: default stage
-                version: 1                   // New: initial version
+                moneyType: sanitizeString(moneyType)
             });
 
             await newOpportunity.save();
+
+            const newOpportunityVersion = new OpportunityVersion({
+                opportunity: newOpportunity._id,
+                approvalStatus: 'Pending',
+                versionDate: 1,
+                createdBy: req.user.id
+            });
+
+            await newOpportunityVersion.save();
 
             return res.status(201).json({
                 EC: 0,
@@ -65,7 +90,6 @@ module.exports = {
                 data: newOpportunity
             });
         } catch (error) {
-            console.log('error', error.message);
             return res.status(500).json({
                 EC: 1,
                 message: 'Error creating opportunity',
@@ -85,7 +109,7 @@ module.exports = {
         }
 
         const { id } = req.params;
-        const { name, customerName, description, division, department, opportunityLead, timeline, scope, budget, status, category, nation, moneyType, approvalStatus, approvalComment } = req.body;
+        const { name, customerName, description, department, opportunityLead, timeline, scope, budget, status, category, nation, moneyType } = req.body;
 
         try {
             const opportunity = await Opportunity.findById(id);
@@ -94,6 +118,16 @@ module.exports = {
                     EC: 1,
                     message: 'Opportunity not found',
                     data: null
+                });
+            }
+
+            const user = await UserMaster.findById(req.user.id).populate('role division department');
+
+            if (user.role.roleName !== 'Presale Division' && user.role.roleName !== 'Presale Department') {
+                return res.status(403).json({
+                    EC: 1,
+                    message: 'Unauthorized',
+                    data: { result: 'You do not have permission to update this Opportunity.' }
                 });
             }
 
@@ -116,11 +150,20 @@ module.exports = {
                 });
             }
 
+            let division, dept = department;
+            if (user.role.roleName === 'Presale Division') {
+                division = user.division._id;
+                dept = null;
+            } else if (user.role.roleName === 'Presale Department') {
+                division = user.division._id;
+                dept = user.department._id;
+            }
+
             opportunity.name = sanitizeString(name) || opportunity.name;
             opportunity.customerName = sanitizeString(customerName) || opportunity.customerName;
             opportunity.description = sanitizeString(description) || opportunity.description;
             opportunity.division = division || opportunity.division;
-            opportunity.department = department || opportunity.department;
+            opportunity.department = dept || opportunity.department;
             opportunity.opportunityLead = opportunityLead || opportunity.opportunityLead;
             opportunity.timeline = sanitizeString(timeline) || opportunity.timeline;
             opportunity.scope = sanitizeString(scope) || opportunity.scope;
@@ -129,21 +172,6 @@ module.exports = {
             opportunity.category = category || opportunity.category;
             opportunity.nation = sanitizeString(nation) || opportunity.nation;
             opportunity.moneyType = sanitizeString(moneyType) || opportunity.moneyType;
-
-            // New logic for approval
-            if (approvalStatus) {
-                opportunity.approvalStatus = approvalStatus;
-                opportunity.approvalComment = sanitizeString(approvalComment);
-                opportunity.approvalDate = new Date();
-
-                if (approvalStatus === 'Rejected') {
-                    opportunity.version += 1; // Increment version if rejected
-                }
-
-                if (approvalStatus === 'Approved') {
-                    opportunity.stage = 'Approved'; // Change stage to Approved if approved
-                }
-            }
 
             await opportunity.save();
 
@@ -168,16 +196,39 @@ module.exports = {
 
             let opportunities;
 
-            if (includeDeleted === 'true') {
-                opportunities = await Opportunity.findWithDeleted()
+            const user = await UserMaster.findById(req.user.id).populate('role division department');
+
+            if (user.role.roleName === 'Presale Division') {
+                opportunities = await Opportunity.find({
+                    division: user.division._id
+                })
+                    .populate('division department opportunityLead category')
+                    .sort(sortCriteria)
+                    .exec();
+
+            } else if (user.role.roleName === 'Presale Department') {
+                opportunities = await Opportunity.find({
+                    division: user.division._id,
+                    department: user.department._id
+                })
+                    .populate('division department opportunityLead category')
+                    .sort(sortCriteria)
+                    .exec();
+
+            } else if (user.role.roleName === 'Opportunity') {
+                // Opportunity Lead sẽ chỉ thấy các opportunity mà họ được gán làm lead
+                opportunities = await Opportunity.find({
+                    opportunityLead: user._id
+                })
                     .populate('division department opportunityLead category')
                     .sort(sortCriteria)
                     .exec();
             } else {
-                opportunities = await Opportunity.find()
-                    .populate('division department opportunityLead category')
-                    .sort(sortCriteria)
-                    .exec();
+                return res.status(403).json({
+                    EC: 1,
+                    message: 'Unauthorized',
+                    data: { result: 'You do not have permission to view Opportunities.' }
+                });
             }
 
             return res.status(200).json({
@@ -186,7 +237,7 @@ module.exports = {
                 data: { result: opportunities }
             });
         } catch (error) {
-            console.log('error', error.message);
+            console.log('Error fetching opportunities:', error.message);
             return res.status(500).json({
                 EC: 1,
                 message: 'Error fetching opportunities',
@@ -293,7 +344,6 @@ module.exports = {
                 });
             }
 
-            //sort by name
             const leads = await UserMaster.find({ role: opportunityLead._id }).sort({ username: 1 });
 
             return res.status(200).json({
@@ -310,4 +360,119 @@ module.exports = {
             });
         }
     },
+    updateOpportunityAfterRejection: async (req, res) => {
+        const { id } = req.params;
+        const { name, customerName, description, timeline, scope, budget, category, nation, moneyType } = req.body;
+
+        try {
+            const opportunity = await Opportunity.findById(id);
+            if (!opportunity || opportunity.approvalStatus !== 'Rejected') {
+                return res.status(400).json({
+                    EC: 1,
+                    message: 'Opportunity must be in Rejected state to edit',
+                    data: null
+                });
+            }
+
+            // Create a new version for the edited opportunity after rejection
+            const newVersion = new OpportunityVersion({
+                opportunity: opportunity._id,
+                approvalStatus: 'In Review',
+                comment: '',  // Optional comment for tracking changes
+                versionDate: new Date(),
+                createdBy: req.user._id
+            });
+
+            opportunity.name = sanitizeString(name) || opportunity.name;
+            opportunity.customerName = sanitizeString(customerName) || opportunity.customerName;
+            opportunity.description = sanitizeString(description) || opportunity.description;
+            opportunity.timeline = sanitizeString(timeline) || opportunity.timeline;
+            opportunity.scope = sanitizeString(scope) || opportunity.scope;
+            opportunity.budget = budget || opportunity.budget;
+            opportunity.category = category || opportunity.category;
+            opportunity.nation = sanitizeString(nation) || opportunity.nation;
+            opportunity.moneyType = sanitizeString(moneyType) || opportunity.moneyType;
+            opportunity.approvalStatus = 'Pending';  // Reset to pending for review again
+
+            await opportunity.save();
+            await newVersion.save();
+
+            return res.status(200).json({
+                EC: 0,
+                message: 'Opportunity updated after rejection successfully',
+                data: { opportunity, version: newVersion }
+            });
+
+        } catch (error) {
+            return res.status(500).json({
+                EC: 1,
+                message: 'Error updating opportunity after rejection',
+                data: { error: error.message }
+            });
+        }
+    },
+    updateApprovalStatus: async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                EC: 1,
+                message: 'Validation failed',
+                data: { errors: errors.array() }
+            });
+        }
+
+        const { id } = req.params;
+        const { approvalStatus, comment } = req.body;
+        const userId = req.user.id;
+
+        try {
+            const opportunity = await Opportunity.findById(id);
+            if (!opportunity) {
+                return res.status(404).json({
+                    EC: 1,
+                    message: 'Opportunity not found',
+                    data: null
+                });
+            }
+
+            const user = await UserMaster.findById(userId).populate('role');
+            if (!user || user.role.roleName !== 'Opportunity') {
+                return res.status(403).json({
+                    EC: 1,
+                    message: 'Unauthorized. Only OpportunityLead can update approval status.',
+                    data: null
+                });
+            }
+
+            const newVersion = new OpportunityVersion({
+                opportunity: opportunity._id,
+                approvalStatus,
+                comment: comment || '',
+                createdBy: userId,
+            });
+
+            await newVersion.save();
+
+            if (approvalStatus === 'Approved') {
+                opportunity.approvalStatus = 'Approved';
+            } else if (approvalStatus === 'Rejected') {
+                opportunity.approvalStatus = 'Rejected';
+            }
+
+            await opportunity.save();
+
+            return res.status(200).json({
+                EC: 0,
+                message: `Opportunity has been ${approvalStatus}`,
+                data: { opportunity, version: newVersion }
+            });
+
+        } catch (error) {
+            return res.status(500).json({
+                EC: 1,
+                message: 'Error updating opportunity approval status',
+                data: { error: error.message }
+            });
+        }
+    }
 };
