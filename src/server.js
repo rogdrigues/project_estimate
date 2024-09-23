@@ -4,7 +4,7 @@ const express = require('express');
 const app = express();
 const useMiddlewares = require('./middlewares/middleware');
 const cron = require('node-cron');
-const cronJob = require('cron').CronJob;
+
 // Call middleware.js
 useMiddlewares(app, express);
 //Seed data

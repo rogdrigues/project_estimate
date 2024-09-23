@@ -1,6 +1,6 @@
 const PresalePlanComment = require('../../models/opportunity/presalePlanComments');
 const PresalePlan = require('../../models/opportunity/presalePlan');
-const Opportunity = require('../../models/opportunity/opportunity');
+const Opportunity = require('../../models/opportunity/presaleOpportunity');
 const { validationResult } = require('express-validator');
 const { sanitizeString } = require('../../utils/stringUtils');
 
