@@ -12,7 +12,8 @@ const {
     restoreOpportunity,
     getOpportunityLead,
     updateApprovalStatus,
-    updateOpportunityAfterRejection
+    updateOpportunityAfterRejection,
+    getLatestOpportunityVersion
 } = require('../controllers/presaleOpportunityControllers');
 
 router.post('/create', authenticateToken, [
@@ -32,6 +33,8 @@ router.put('/update/:id', authenticateToken, [
 router.get('/list', authenticateToken, getAllOpportunities);
 
 router.get('/opportunity-leads', authenticateToken, getOpportunityLead);
+
+router.get('/:opportunityId/latest-version', authenticateToken, getLatestOpportunityVersion);
 
 router.get('/:id', authenticateToken, getOpportunityById);
 

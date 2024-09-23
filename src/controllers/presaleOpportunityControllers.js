@@ -199,7 +199,7 @@ module.exports = {
             const user = await UserMaster.findById(req.user.id).populate('role division department');
 
             if (user.role.roleName === 'Presale Division') {
-                opportunities = await Opportunity.find({
+                opportunities = await Opportunity.findWithDeleted({
                     division: user.division._id
                 })
                     .populate('division department opportunityLead category')
@@ -207,7 +207,7 @@ module.exports = {
                     .exec();
 
             } else if (user.role.roleName === 'Presale Department') {
-                opportunities = await Opportunity.find({
+                opportunities = await Opportunity.findWithDeleted({
                     division: user.division._id,
                     department: user.department._id
                 })
@@ -216,7 +216,6 @@ module.exports = {
                     .exec();
 
             } else if (user.role.roleName === 'Opportunity') {
-                // Opportunity Lead sẽ chỉ thấy các opportunity mà họ được gán làm lead
                 opportunities = await Opportunity.find({
                     opportunityLead: user._id
                 })
@@ -241,6 +240,36 @@ module.exports = {
             return res.status(500).json({
                 EC: 1,
                 message: 'Error fetching opportunities',
+                data: { error: error.message }
+            });
+        }
+    },
+
+    getLatestOpportunityVersion: async (req, res) => {
+        const { opportunityId } = req.params;
+
+        try {
+            const latestVersion = await OpportunityVersion.findOne({ opportunity: opportunityId })
+                .sort({ createdAt: -1 })
+                .exec();
+
+            if (!latestVersion) {
+                return res.status(404).json({
+                    EC: 1,
+                    message: 'No version found for this opportunity',
+                    data: null
+                });
+            }
+
+            return res.status(200).json({
+                EC: 0,
+                message: 'Latest opportunity version fetched successfully',
+                data: latestVersion
+            });
+        } catch (error) {
+            return res.status(500).json({
+                EC: 1,
+                message: 'Error fetching latest opportunity version',
                 data: { error: error.message }
             });
         }

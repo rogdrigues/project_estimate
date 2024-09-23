@@ -15,6 +15,7 @@ const upload = multer({ storage: memoryStorage });
 const cloudinary = require('cloudinary').v2;
 const { sanitizeString, generateDisplayName } = require('../utils/stringUtils');
 const { isValidEmail } = require('../utils/validInput');
+const division = require('../models/division');
 
 module.exports = {
     addNewUser: async (req, res) => {
@@ -508,6 +509,8 @@ module.exports = {
                         profile: {
                             avatar: user.profile.avatar || null,
                         },
+                        division: user.division,
+                        department: user.department,
                         lastLogin: user.lastLogin || null
                     }
                 }
