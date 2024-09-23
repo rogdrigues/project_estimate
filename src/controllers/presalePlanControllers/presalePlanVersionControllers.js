@@ -1,6 +1,6 @@
-const PresalePlanVersion = require('../models/presalePlanVersion');
+const PresalePlanVersion = require('../../models/opportunity/presalePlanVersion');
 const { validationResult } = require('express-validator');
-const { sanitizeString } = require('../utils/stringUtils');
+const { sanitizeString } = require('../../utils/stringUtils');
 
 module.exports = {
     createPresalePlanVersion: async (req, res) => {
@@ -24,7 +24,6 @@ module.exports = {
             });
 
             await newVersion.save();
-
             return res.status(201).json({
                 EC: 0,
                 message: 'Presale Plan Version created successfully',
@@ -34,6 +33,28 @@ module.exports = {
             return res.status(500).json({
                 EC: 1,
                 message: 'Error creating presale plan version',
+                data: { error: error.message }
+            });
+        }
+    },
+
+    getVersionsForPresalePlan: async (req, res) => {
+        const { presalePlanId } = req.params;
+
+        try {
+            const versions = await PresalePlanVersion.find({ presalePlan: presalePlanId })
+                .populate('updatedBy')
+                .exec();
+
+            return res.status(200).json({
+                EC: 0,
+                message: 'Versions fetched successfully',
+                data: versions
+            });
+        } catch (error) {
+            return res.status(500).json({
+                EC: 1,
+                message: 'Error fetching versions',
                 data: { error: error.message }
             });
         }
