@@ -1,13 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const { check } = require('express-validator');
+const { check, body, param } = require('express-validator');
 const authenticateToken = require('../middlewares/authenticateToken');
 const { restorePresalePlan, deletePresalePlan, getPresalePlanById, getAllPresalePlans, updatePresalePlan, createPresalePlan } = require('../controllers/presalePlanControllers/presalePlanControllers');
 const { createComment, getCommentsForPresalePlan, approvePresalePlan, rejectPresalePlan } = require('../controllers/presalePlanControllers/presalePlanCommentControllers');
+const { createPresalePlanVersion, getVersionsForPresalePlan, getPresalePlanVersionById, deletePresalePlanVersion } = require('../controllers/presalePlanControllers/presalePlanVersionControllers');
 
 // Routes for Presale Plans
 router.post(
-    '/create',
+    '/create-presale-plan',
     authenticateToken,
     [
         check('opportunity').notEmpty().withMessage('Opportunity ID is required'),
@@ -19,7 +20,7 @@ router.post(
 );
 
 router.put(
-    '/update/:id',
+    '/update-presale/:id',
     authenticateToken,
     [
         check('name').optional().notEmpty().withMessage('Name cannot be empty'),
@@ -28,17 +29,17 @@ router.put(
     updatePresalePlan
 );
 
-router.get('/all', authenticateToken, getAllPresalePlans);
+router.get('/get-all-presale', authenticateToken, getAllPresalePlans);
 
-router.get('/:id', authenticateToken, getPresalePlanById);
+router.get('/presale-plan/:id', authenticateToken, getPresalePlanById);
 
-router.delete('/delete/:id', authenticateToken, deletePresalePlan);
+router.delete('/delete-presale/:id', authenticateToken, deletePresalePlan);
 
-router.post('/restore/:id', authenticateToken, restorePresalePlan);
+router.post('/restore-presale/:id', authenticateToken, restorePresalePlan);
 
 // Routes for Presale Plan Comments
 router.post(
-    '/comment',
+    '/create-presale-comment',
     authenticateToken,
     [
         check('presalePlan').notEmpty().withMessage('Presale Plan ID is required'),
@@ -53,13 +54,43 @@ router.post(
 router.get('/comments/:presalePlanId', authenticateToken, getCommentsForPresalePlan);
 
 // Approve/Reject Presale Plan
-router.post('/approve/:id', authenticateToken, approvePresalePlan);
+router.post('/approve-comment/:id', authenticateToken, approvePresalePlan);
 
 router.post(
-    '/reject/:id',
+    '/reject-comment/:id',
     authenticateToken,
     [check('reason').notEmpty().withMessage('Rejection reason is required')],
     rejectPresalePlan
+);
+
+//Presale plan version
+router.post(
+    '/version/create-presale-version',
+    authenticateToken,
+    [
+        body('presalePlan').notEmpty().withMessage('Presale Plan ID is required'),
+        body('versionNumber').isNumeric().withMessage('Version number must be a number'),
+        body('changes').notEmpty().withMessage('Changes description is required')
+    ],
+    createPresalePlanVersion
+);
+
+router.get(
+    '/versions/list-presale-version/:presalePlanId',
+    authenticateToken,
+    getVersionsForPresalePlan
+);
+
+router.get(
+    '/version/get-presale-version/:versionId',
+    authenticateToken,
+    getPresalePlanVersionById
+);
+
+router.delete(
+    '/version/delete/:versionId',
+    authenticateToken,
+    deletePresalePlanVersion
 );
 
 module.exports = router;

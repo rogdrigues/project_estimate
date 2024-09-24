@@ -244,6 +244,82 @@ module.exports = {
             });
         }
     },
+    getApprovedOpportunities: async (req, res) => {
+        try {
+            const { includeDeleted, includeApproveOnly } = req.query;
+            const sortCriteria = { deleted: 1, createdAt: -1 };
+
+            let opportunities;
+
+            const user = await UserMaster.findById(req.user.id).populate('role division department');
+
+            let filterCriteria = {};
+
+            if (includeApproveOnly === 'true') {
+                filterCriteria.approvalStatus = 'Approved';
+            }
+
+            if (user.role.roleName === 'Presale Division') {
+                filterCriteria.division = user.division._id;
+
+                if (includeDeleted === 'true') {
+                    opportunities = await Opportunity.findWithDeleted(filterCriteria)
+                        .populate('division department opportunityLead category')
+                        .sort(sortCriteria)
+                        .exec();
+                } else {
+                    opportunities = await Opportunity.find(filterCriteria)
+                        .populate('division department opportunityLead category')
+                        .sort(sortCriteria)
+                        .exec();
+                }
+
+            } else if (user.role.roleName === 'Presale Department') {
+                filterCriteria.division = user.division._id;
+                filterCriteria.department = user.department._id;
+
+                if (includeDeleted === 'true') {
+                    opportunities = await Opportunity.findWithDeleted(filterCriteria)
+                        .populate('division department opportunityLead category')
+                        .sort(sortCriteria)
+                        .exec();
+                } else {
+                    opportunities = await Opportunity.find(filterCriteria)
+                        .populate('division department opportunityLead category')
+                        .sort(sortCriteria)
+                        .exec();
+                }
+
+            } else if (user.role.roleName === 'Opportunity') {
+                filterCriteria.opportunityLead = user._id;
+
+                opportunities = await Opportunity.find(filterCriteria)
+                    .populate('division department opportunityLead category')
+                    .sort(sortCriteria)
+                    .exec();
+
+            } else {
+                return res.status(403).json({
+                    EC: 1,
+                    message: 'Unauthorized',
+                    data: { result: 'You do not have permission to view Opportunities.' }
+                });
+            }
+
+            return res.status(200).json({
+                EC: 0,
+                message: 'Approved Opportunities fetched successfully',
+                data: { result: opportunities }
+            });
+        } catch (error) {
+            console.log('Error fetching approved opportunities:', error.message);
+            return res.status(500).json({
+                EC: 1,
+                message: 'Error fetching approved opportunities',
+                data: { error: error.message }
+            });
+        }
+    },
 
     getLatestOpportunityVersion: async (req, res) => {
         const { opportunityId } = req.params;

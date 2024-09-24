@@ -23,7 +23,7 @@ const setRoutes = (app) => {
     app.use('/api/productivity', productivityRoutes);
     app.use('/api/checklist', checklistRoutes);
     app.use('/api/opportunity', presaleOpportunityRoutes);
-    app.use('/api/presalePlan', presalePlanRoutes);
+    app.use('/api/presale', presalePlanRoutes);
 };
 
 module.exports = setRoutes;

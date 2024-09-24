@@ -122,10 +122,50 @@ module.exports = {
     },
 
     getAllPresalePlans: async (req, res) => {
+        const { includeDeleted } = req.query;
+        const userId = req.user.id;
+
         try {
-            const presalePlans = await PresalePlan.find()
-                .populate('opportunity department division createdBy')
-                .exec();
+            const user = await UserMaster.findById(userId).populate('division department').exec();
+            if (!user) {
+                return res.status(404).json({
+                    EC: 1,
+                    message: 'User not found',
+                    data: null
+                });
+            }
+
+            const userDivision = user.division ? user.division._id : null;
+            const userDepartment = user.department ? user.department._id : null;
+
+            if (!userDivision && !userDepartment) {
+                return res.status(400).json({
+                    EC: 1,
+                    message: 'User does not belong to any division or department',
+                    data: null
+                });
+            }
+
+            let presalePlans;
+
+            const filterCriteria = {
+                $or: [
+                    { division: userDivision },
+                    { department: userDepartment }
+                ]
+            };
+
+            if (includeDeleted === 'true') {
+                presalePlans = await PresalePlan.findWithDeleted(filterCriteria)
+                    .populate('opportunity department division createdBy')
+                    .sort({ deleted: 1, createdAt: -1 })
+                    .exec();
+            } else {
+                presalePlans = await PresalePlan.find(filterCriteria)
+                    .populate('opportunity department division createdBy')
+                    .sort({ deleted: 1, createdAt: -1 })
+                    .exec();
+            }
 
             return res.status(200).json({
                 EC: 0,

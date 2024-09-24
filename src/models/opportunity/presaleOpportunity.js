@@ -18,7 +18,8 @@ const opportunitySchema = new mongoose.Schema({
     approvalStatus: { type: String, enum: ['Pending', 'Approved', 'Rejected'], default: 'Pending' },
     approvalComment: { type: String }, // Optional comment from the Opportunity Lead.
     approvalDate: { type: Date },      // The date when the approval or rejection happens.
-    version: { type: Number, default: 1 }  // Increment version for new revisions after rejection.
+    version: { type: Number, default: 1 },  // Increment version for new revisions after rejection.
+    presalePlan: { type: mongoose.Schema.Types.ObjectId, ref: 'PresalePlan' }  // New field to link Presale Plan
 }, { timestamps: true });
 
 opportunitySchema.plugin(mongooseDelete, { deletedAt: true, overrideMethods: 'all' });

@@ -58,5 +58,65 @@ module.exports = {
                 data: { error: error.message }
             });
         }
+    },
+
+    getPresalePlanVersionById: async (req, res) => {
+        const { versionId } = req.params;
+
+        try {
+            const version = await PresalePlanVersion.findById(versionId)
+                .populate('updatedBy')
+                .exec();
+
+            if (!version) {
+                return res.status(404).json({
+                    EC: 1,
+                    message: 'Version not found',
+                    data: null
+                });
+            }
+
+            return res.status(200).json({
+                EC: 0,
+                message: 'Version fetched successfully',
+                data: version
+            });
+        } catch (error) {
+            return res.status(500).json({
+                EC: 1,
+                message: 'Error fetching version',
+                data: { error: error.message }
+            });
+        }
+    },
+
+    deletePresalePlanVersion: async (req, res) => {
+        const { versionId } = req.params;
+
+        try {
+            const version = await PresalePlanVersion.findById(versionId);
+
+            if (!version) {
+                return res.status(404).json({
+                    EC: 1,
+                    message: 'Version not found',
+                    data: null
+                });
+            }
+
+            await version.delete();
+
+            return res.status(200).json({
+                EC: 0,
+                message: 'Version deleted successfully',
+                data: version
+            });
+        } catch (error) {
+            return res.status(500).json({
+                EC: 1,
+                message: 'Error deleting version',
+                data: { error: error.message }
+            });
+        }
     }
 };
