@@ -13,7 +13,6 @@ router.post(
     [
         check('opportunity').notEmpty().withMessage('Opportunity ID is required'),
         check('name').notEmpty().withMessage('Name is required'),
-        check('department').notEmpty().withMessage('Department ID is required'),
         check('division').notEmpty().withMessage('Division ID is required')
     ],
     createPresalePlan
@@ -42,7 +41,7 @@ router.post(
     '/create-presale-comment',
     authenticateToken,
     [
-        check('presalePlan').notEmpty().withMessage('Presale Plan ID is required'),
+        check('presalePlan').notEmpty().withMessage('Presale Plan is required'),
         check('comment').notEmpty().withMessage('Comment is required'),
         check('approvalStatus')
             .isIn(['Approved', 'Rejected', 'Pending'])
@@ -68,7 +67,7 @@ router.post(
     '/version/create-presale-version',
     authenticateToken,
     [
-        body('presalePlan').notEmpty().withMessage('Presale Plan ID is required'),
+        body('presalePlan').notEmpty().withMessage('Presale Plan is required'),
         body('versionNumber').isNumeric().withMessage('Version number must be a number'),
         body('changes').notEmpty().withMessage('Changes description is required')
     ],

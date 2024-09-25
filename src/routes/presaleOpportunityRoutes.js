@@ -37,9 +37,9 @@ router.get('/opportunity-leads', authenticateToken, getOpportunityLead);
 
 router.get('/:opportunityId/latest-version', authenticateToken, getLatestOpportunityVersion);
 
-router.get('/list-approved', authenticateToken, getAllOpportunities);
+router.get('/list-approved', authenticateToken, getApprovedOpportunities);
 
-router.get('/:id', authenticateToken, getApprovedOpportunities);
+router.get('/:id', authenticateToken, getOpportunityById);
 
 router.delete('/delete/:id', authenticateToken, deleteOpportunity);
 

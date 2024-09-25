@@ -20,7 +20,7 @@ module.exports = {
                 presalePlan,
                 versionNumber,
                 changes: sanitizeString(changes),
-                updatedBy: req.user._id
+                updatedBy: req.user.id
             });
 
             await newVersion.save();

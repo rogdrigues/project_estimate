@@ -5,6 +5,7 @@ const moment = require('moment');
 const Department = require('../../models/department');
 const Division = require('../../models/division');
 const PresalePlanVersion = require('../../models/opportunity/presalePlanVersion');
+const UserMaster = require('../../models/userMaster');
 
 module.exports = {
     createPresalePlan: async (req, res) => {
@@ -17,16 +18,38 @@ module.exports = {
             });
         }
 
-        const { opportunity, name, description, department, division } = req.body;
+        const { opportunity, name, description } = req.body;
 
         try {
-            const validDepartment = await Department.findById(department);
-            const validDivision = await Division.findById(division);
+            const user = await UserMaster.findById(req.user.id).populate('role division department');
 
-            if (!validDepartment || !validDivision || validDepartment.division.toString() !== validDivision._id.toString()) {
-                return res.status(400).json({
+            let validDivision, validDepartment;
+
+            if (user.role.roleName === 'Presale Division') {
+                validDivision = await Division.findById(user.division._id);
+                if (!validDivision) {
+                    return res.status(400).json({
+                        EC: 1,
+                        message: 'Invalid Division',
+                        data: null
+                    });
+                }
+
+            } else if (user.role.roleName === 'Presale Department') {
+                validDivision = await Division.findById(user.division._id);
+                validDepartment = await Department.findById(user.department._id);
+
+                if (!validDivision || !validDepartment || validDepartment.division.toString() !== validDivision._id.toString()) {
+                    return res.status(400).json({
+                        EC: 1,
+                        message: 'Invalid Department or Division relationship',
+                        data: null
+                    });
+                }
+            } else {
+                return res.status(403).json({
                     EC: 1,
-                    message: 'Invalid Department or Division relationship',
+                    message: 'Unauthorized role',
                     data: null
                 });
             }
@@ -35,9 +58,9 @@ module.exports = {
                 opportunity,
                 name,
                 description,
-                createdBy: req.user._id,
-                department,
-                division,
+                createdBy: req.user.id,
+                division: validDivision._id,
+                department: validDepartment ? validDepartment._id : null,
                 status: 'Pending',
                 version: 1,
                 pendingUntil: moment().add(3, 'days').toDate()
@@ -95,7 +118,7 @@ module.exports = {
                 presalePlan: presalePlan._id,
                 versionNumber: presalePlan.version,
                 changes: changes.join(', '),
-                updatedBy: req.user._id
+                updatedBy: req.user.id
             });
 
             await newVersion.save();
@@ -187,7 +210,7 @@ module.exports = {
         try {
             const presalePlan = await PresalePlan.findById(id)
                 .populate('opportunity department division createdBy')
-                .populate({ path: 'comments', model: 'PresalePlanComment' }) // Populate comment
+                .populate({ path: 'comments', model: 'PresalePlanComment' })
                 .exec();
 
             if (!presalePlan) {

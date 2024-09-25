@@ -16,7 +16,7 @@ module.exports = {
         }
 
         const { presalePlan, comment, approvalStatus } = req.body;
-        const userId = req.user._id;
+        const userId = req.user.id;
 
         try {
             const existingComment = await PresalePlanComment.findOne({ presalePlan, createdBy: userId });
@@ -95,7 +95,7 @@ module.exports = {
 
     approvePresalePlan: async (req, res) => {
         const { id } = req.params;
-        const userId = req.user._id;
+        const userId = req.user.id;
 
         try {
             const presalePlan = await PresalePlan.findById(id);
