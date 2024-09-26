@@ -15,7 +15,7 @@ const {
     updateOpportunityAfterRejection,
     getApprovedOpportunities,
     getOpportunityVersion,
-    getLatestOpportunityComment
+    getOpportunityLeadComment
 } = require('../controllers/presaleOpportunityControllers');
 
 router.post('/create', authenticateToken, [
@@ -36,7 +36,7 @@ router.get('/list', authenticateToken, getAllOpportunities);
 
 router.get('/opportunity-leads', authenticateToken, getOpportunityLead);
 
-router.get('/:opportunityId/latest-version', authenticateToken, getLatestOpportunityComment);
+router.get('/:opportunityId/latest-version', authenticateToken, getOpportunityLeadComment);
 
 router.get('/list-approved', authenticateToken, getApprovedOpportunities);
 

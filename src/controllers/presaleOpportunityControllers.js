@@ -347,11 +347,11 @@ module.exports = {
         }
     },
 
-    getLatestOpportunityComment: async (req, res) => {
+    getOpportunityLeadComment: async (req, res) => {
         const { opportunityId } = req.params;
 
         try {
-            const latestVersion = await OpportunityComment.findOne({ opportunity: opportunityId })
+            const latestVersion = await OpportunityComment.find({ opportunity: opportunityId })
                 .populate('createdBy opportunity')
                 .sort({ createdAt: -1 })
                 .exec();
