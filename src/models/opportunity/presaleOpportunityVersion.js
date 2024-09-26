@@ -5,8 +5,8 @@ const opportunityVersionSchema = new mongoose.Schema({
     opportunity: { type: mongoose.Schema.Types.ObjectId, ref: 'Opportunity', required: true },
     approvalStatus: { type: String, enum: ['Pending', 'Approved', 'Rejected'], default: 'Pending' },
     comment: { type: String },
-    versionDate: { type: Date, default: Date.now },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserMaster', required: true },
+    versionNumber: { type: Number, required: true },
 }, { timestamps: true });
 
 opportunityVersionSchema.plugin(mongooseDelete, { deletedAt: true, overrideMethods: 'all' });

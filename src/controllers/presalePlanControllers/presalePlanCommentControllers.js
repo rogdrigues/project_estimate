@@ -76,7 +76,7 @@ module.exports = {
 
         try {
             const comments = await PresalePlanComment.find({ presalePlan: presalePlanId })
-                .populate('createdBy', 'fullName email')
+                .populate('createdBy', 'fullName email username')
                 .exec();
 
             return res.status(200).json({

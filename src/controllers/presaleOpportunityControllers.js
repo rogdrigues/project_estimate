@@ -5,6 +5,7 @@ const { sanitizeString } = require('../utils/stringUtils');
 const moment = require('moment');
 const PermissionSet = require('../models/permissionSet');
 const OpportunityVersion = require('../models/opportunity/presaleOpportunityVersion');
+const OpportunityComment = require('../models/opportunity/presaleOpportunityComment');
 module.exports = {
     createOpportunity: async (req, res) => {
         const errors = validationResult(req);
@@ -78,7 +79,8 @@ module.exports = {
             const newOpportunityVersion = new OpportunityVersion({
                 opportunity: newOpportunity._id,
                 approvalStatus: 'Pending',
-                versionDate: 1,
+                comment: 'Created Opportunity',
+                versionNumber: 1,
                 createdBy: req.user.id
             });
 
@@ -159,6 +161,28 @@ module.exports = {
                 dept = user.department._id;
             }
 
+            const changes = [];
+            if (name && name !== opportunity.name) changes.push(`Name changed from ${opportunity.name} to ${name}`);
+            if (customerName && customerName !== opportunity.customerName) changes.push(`Customer name changed from ${opportunity.customerName} to ${customerName}`);
+            if (description && description !== opportunity.description) changes.push(`Description changed from ${opportunity.description} to ${description}`);
+            if (opportunityLead && opportunityLead !== opportunity.opportunityLead.toString()) changes.push(`Opportunity lead changed`);
+            if (timeline && timeline !== opportunity.timeline) changes.push(`Timeline changed from ${opportunity.timeline} to ${timeline}`);
+            if (scope && scope !== opportunity.scope) changes.push(`Scope changed`);
+            if (budget && budget !== opportunity.budget) changes.push(`Budget changed from ${opportunity.budget} to ${budget}`);
+            if (status && status !== opportunity.status) changes.push(`Status changed from ${opportunity.status} to ${status}`);
+            if (category && category !== opportunity.category.toString()) changes.push(`Category changed`);
+            if (nation && nation !== opportunity.nation) changes.push(`Nation changed from ${opportunity.nation} to ${nation}`);
+            if (moneyType && moneyType !== opportunity.moneyType) changes.push(`Money type changed from ${opportunity.moneyType} to ${moneyType}`);
+
+            const newVersion = new OpportunityVersion({
+                opportunity: opportunity._id,
+                versionNumber: opportunity.version || 1,
+                changes: changes.join(', '),
+                updatedBy: req.user._id
+            });
+
+            await newVersion.save();
+
             opportunity.name = sanitizeString(name) || opportunity.name;
             opportunity.customerName = sanitizeString(customerName) || opportunity.customerName;
             opportunity.description = sanitizeString(description) || opportunity.description;
@@ -172,6 +196,7 @@ module.exports = {
             opportunity.category = category || opportunity.category;
             opportunity.nation = sanitizeString(nation) || opportunity.nation;
             opportunity.moneyType = sanitizeString(moneyType) || opportunity.moneyType;
+            opportunity.version += 1;
 
             await opportunity.save();
 
@@ -188,6 +213,7 @@ module.exports = {
             });
         }
     },
+
     getAllOpportunities: async (req, res) => {
         try {
             const { includeDeleted } = req.query;
@@ -321,12 +347,43 @@ module.exports = {
         }
     },
 
-    getLatestOpportunityVersion: async (req, res) => {
+    getLatestOpportunityComment: async (req, res) => {
         const { opportunityId } = req.params;
 
         try {
-            const latestVersion = await OpportunityVersion.findOne({ opportunity: opportunityId })
+            const latestVersion = await OpportunityComment.findOne({ opportunity: opportunityId })
+                .populate('createdBy opportunity')
                 .sort({ createdAt: -1 })
+                .exec();
+
+            if (!latestVersion) {
+                return res.status(404).json({
+                    EC: 1,
+                    message: 'No comment found for this opportunity',
+                    data: null
+                });
+            }
+
+            return res.status(200).json({
+                EC: 0,
+                message: 'Latest opportunity comment fetched successfully',
+                data: latestVersion
+            });
+        } catch (error) {
+            return res.status(500).json({
+                EC: 1,
+                message: 'Error fetching opportunity comment',
+                data: { error: error.message }
+            });
+        }
+    },
+
+    getOpportunityVersion: async (req, res) => {
+        const { opportunityId } = req.params;
+
+        try {
+            const latestVersion = await OpportunityVersion.find({ opportunity: opportunityId })
+                .populate('createdBy opportunity')
                 .exec();
 
             if (!latestVersion) {
@@ -339,13 +396,13 @@ module.exports = {
 
             return res.status(200).json({
                 EC: 0,
-                message: 'Latest opportunity version fetched successfully',
+                message: 'oppotunity version fetched successfully',
                 data: latestVersion
             });
         } catch (error) {
             return res.status(500).json({
                 EC: 1,
-                message: 'Error fetching latest opportunity version',
+                message: 'Error fetching opportunity version',
                 data: { error: error.message }
             });
         }
@@ -392,6 +449,14 @@ module.exports = {
                 });
             }
 
+            const newVersion = new OpportunityVersion({
+                opportunity: opportunity._id,
+                approvalStatus: 'Deleted',
+                comment: 'Deleted Opportunity',
+                createdBy: req.user._id
+            });
+
+            await newVersion.save();
             await opportunity.delete();
 
             return res.status(200).json({
@@ -422,6 +487,14 @@ module.exports = {
                 });
             }
 
+            const newVersion = new OpportunityVersion({
+                opportunity: opportunity._id,
+                approvalStatus: 'Pending',
+                comment: 'Restored Opportunity',
+                createdBy: req.user._id
+            });
+
+            await newVersion.save();
             await opportunity.restore();
 
             return res.status(200).json({
@@ -483,8 +556,7 @@ module.exports = {
             const newVersion = new OpportunityVersion({
                 opportunity: opportunity._id,
                 approvalStatus: 'In Review',
-                comment: '',  // Optional comment for tracking changes
-                versionDate: new Date(),
+                comment: 'Edited Opportunity after Rejection',
                 createdBy: req.user._id
             });
 
@@ -562,12 +634,20 @@ module.exports = {
             const newVersion = new OpportunityVersion({
                 opportunity: opportunity._id,
                 approvalStatus,
-                comment: comment || '',
+                comment: "This opportunity has been " + approvalStatus,
                 createdBy: userId,
-                version: opportunity.version
+                versionNumber: opportunity.version
+            });
+
+            const newComment = new OpportunityComment({
+                opportunity: opportunity._id,
+                comment,
+                approvalStatus,
+                createdBy: userId,
             });
 
             await newVersion.save();
+            await newComment.save();
             await opportunity.save();
 
             return res.status(200).json({
