@@ -36,7 +36,7 @@ router.get('/list', authenticateToken, getAllOpportunities);
 
 router.get('/opportunity-leads', authenticateToken, getOpportunityLead);
 
-router.get('/:opportunityId/latest-version', authenticateToken, getOpportunityLeadComment);
+router.get('/:opportunityId/opp-lead-comments', authenticateToken, getOpportunityLeadComment);
 
 router.get('/list-approved', authenticateToken, getApprovedOpportunities);
 

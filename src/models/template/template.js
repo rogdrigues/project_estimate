@@ -1,0 +1,18 @@
+const mongoose = require('mongoose');
+const mongooseDelete = require('mongoose-delete');
+
+const templateSchema = new mongoose.Schema({
+    name: { type: String, required: true },
+    description: { type: String },
+    filePath: { type: String, required: true },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserMaster', required: true },
+    status: { type: String, enum: ['Draft', 'Published', 'Archived'], default: 'Draft' },
+    version: { type: Number, default: 1 },
+    category: { type: String },
+    isLocked: { type: Boolean, default: false },
+    tags: { type: [String] },
+}, { timestamps: true });
+
+templateSchema.plugin(mongooseDelete, { deletedAt: true });
+
+module.exports = mongoose.model('Template', templateSchema);
