@@ -1,5 +1,4 @@
 const express = require('express');
-const { check } = require('express-validator');
 const authenticateToken = require('../middlewares/authenticateToken');
 const {
     createTemplate,
@@ -9,28 +8,23 @@ const {
     getAllTemplates,
     getTemplateById,
     getPublishedTemplatesForProject,
-    downloadTemplateSample
+    downloadTemplateSample,
+    downloadTemplate
 } = require('../controllers/templateControllers');
+const uploadTemplate = require('../middlewares/multer');
 
 const router = express.Router();
 
 router.post(
     '/create-template',
-    [
-        check('name', 'Template name is required').not().isEmpty(),
-        check('filePath', 'File path is required').not().isEmpty(),
-        check('createdBy', 'Created by is required').not().isEmpty()
-    ],
+    uploadTemplate.single('file'),
     authenticateToken,
     createTemplate
 );
 
 router.put(
     '/update-template/:id',
-    [
-        check('name', 'Template name is required').not().isEmpty(),
-        check('filePath', 'File path is required').not().isEmpty()
-    ],
+    uploadTemplate.single('file'),
     authenticateToken,
     updateTemplate
 );
@@ -46,5 +40,7 @@ router.get('/get-template/:id', authenticateToken, getTemplateById);
 router.get('/get-published-templates-for-project', authenticateToken, getPublishedTemplatesForProject);
 
 router.get('/download-template-sample', authenticateToken, downloadTemplateSample);
+
+router.get('/download-template/:templateId', authenticateToken, downloadTemplate);
 
 module.exports = router;

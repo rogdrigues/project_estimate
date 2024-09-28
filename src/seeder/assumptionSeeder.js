@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const Assumption = require('../models/assumption');
-const Project = require('../models/project');
+const Project = require('../models/project/project');
 const Category = require('../models/category');
 
 const seedAssumptions = async () => {

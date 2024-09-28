@@ -1,8 +1,9 @@
-const Template = require('../models/template');
+const Template = require('../models/template/template');
 const { validationResult } = require('express-validator');
 const { sanitizeString } = require('../utils/stringUtils');
 const UserMaster = require('../models/userMaster');
-
+const fs = require('fs');
+const path = require('path');
 module.exports = {
     createTemplate: async (req, res) => {
         const errors = validationResult(req);
@@ -14,14 +15,25 @@ module.exports = {
             });
         }
 
-        const { name, description, filePath, createdBy, category, tags } = req.body;
-
+        const { name, description, category, tags } = req.body;
+        const file = req.file;
+        console.log(name, description, category, tags, file);
         try {
+            if (!file) {
+                return res.status(400).json({
+                    EC: 1,
+                    message: "File is required",
+                    data: null
+                });
+            }
+
+            const filePath = path.join('../uploads/templates', file.filename);
+
             const newTemplate = new Template({
                 name: sanitizeString(name),
                 description: sanitizeString(description),
                 filePath,
-                createdBy,
+                createdBy: req.user.id,
                 category,
                 tags,
                 status: 'Draft'
@@ -53,7 +65,8 @@ module.exports = {
         }
 
         const { id } = req.params;
-        const { name, description, filePath, category, tags, status } = req.body;
+        const { name, description, category, tags, status } = req.body;
+        const file = req.file;
 
         try {
             const template = await Template.findById(id);
@@ -65,9 +78,11 @@ module.exports = {
                 });
             }
 
+            const filePath = file ? path.join('/uploads/templates', file.filename) : template.filePath;
+
             template.name = sanitizeString(name) || template.name;
             template.description = sanitizeString(description) || template.description;
-            template.filePath = filePath || template.filePath;
+            template.filePath = filePath;
             template.category = category || template.category;
             template.tags = tags || template.tags;
             template.status = status || template.status;
@@ -116,27 +131,29 @@ module.exports = {
         }
     },
     getAllTemplates: async (req, res) => {
+        console.log("Get All Templates");
         const { includeDeleted } = req.query;
         const sortCriteria = { createdAt: -1 };
-        const userRole = req.user.role;
-        const userId = req.user._id;
+        const userId = req.user.id;
 
         try {
             let templates;
-
-            if (userRole === 'Admin' || userRole === 'Opportunity Lead') {
+            const user = await UserMaster.findById(userId).populate('role');
+            if (user.role.roleName === 'Admin' || user.role.roleName === 'Opportunity') {
                 if (includeDeleted === 'true') {
-                    templates = await Template.findWithDeleted({ createdBy: userId }).sort(sortCriteria).exec();
+                    templates = await Template.findWithDeleted({ createdBy: userId }).populate('category createdBy').sort(sortCriteria).exec();
                 } else {
-                    templates = await Template.find({ createdBy: userId }).sort(sortCriteria).exec();
+                    templates = await Template.find({ createdBy: userId }).populate('category createdBy').sort(sortCriteria).exec();
                 }
-            } else if (userRole === 'Presale Division' || userRole === 'Presale Department') {
+            } else if (user.role.roleName === 'Presale Division' || user.role.roleName === 'Presale Department') {
                 if (includeDeleted === 'true') {
-                    templates = await Template.findWithDeleted({ status: 'Published' }).sort(sortCriteria).exec();
+                    templates = await Template.findWithDeleted({ status: 'Published' }).populate('category createdBy').sort(sortCriteria).exec();
                 } else {
-                    templates = await Template.find({ status: 'Published' }).sort(sortCriteria).exec();
+                    templates = await Template.find({ status: 'Published' }).populate('category createdBy').sort(sortCriteria).exec();
                 }
             }
+
+            console.log("Template", templates);
 
             return res.status(200).json({
                 EC: 0,
@@ -144,6 +161,7 @@ module.exports = {
                 data: { result: templates }
             });
         } catch (error) {
+            console.log("Error", error.message);
             return res.status(500).json({
                 EC: 1,
                 message: "Error fetching templates",
@@ -206,7 +224,7 @@ module.exports = {
         }
     },
     getPublishedTemplatesForProject: async (req, res) => {
-        const userId = req.user._id;
+        const userId = req.user.id;
 
         try {
             const user = await UserMaster.findById(userId).select('role');
@@ -220,8 +238,9 @@ module.exports = {
 
             let templates;
 
-            if (user.role === 'Opportunity Lead') {
+            if (user.role === 'Opportunity') {
                 templates = await Template.find({ status: 'Published' })
+                    .populate('category createdBy')
                     .sort({ createdAt: -1 })
                     .exec();
             } else {
@@ -270,6 +289,40 @@ module.exports = {
             return res.status(500).json({
                 EC: 1,
                 message: "Error occurred while processing your request",
+                data: { error: error.message }
+            });
+        }
+    },
+    downloadTemplate: async (req, res) => {
+        try {
+            const { templateId } = req.params;
+            const template = await Template.findById(templateId);
+
+            if (!template) {
+                return res.status(404).json({
+                    EC: 1,
+                    message: "Template not found",
+                    data: null
+                });
+            }
+
+            const filePath = path.join(__dirname, template.filePath);
+            if (fs.existsSync(filePath)) {
+                const fileName = path.basename(filePath);
+                res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
+                return res.download(filePath);
+            } else {
+                return res.status(404).json({
+                    EC: 1,
+                    message: "File not found",
+                    data: null
+                });
+            }
+
+        } catch (error) {
+            return res.status(500).json({
+                EC: 1,
+                message: "Error downloading template",
                 data: { error: error.message }
             });
         }

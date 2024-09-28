@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-
+const mongooseDelete = require('mongoose-delete');
 const templateDataSchema = new mongoose.Schema({
     templateId: { type: mongoose.Schema.Types.ObjectId, ref: 'Template', required: true },
     projectData: {
@@ -26,4 +26,5 @@ const templateDataSchema = new mongoose.Schema({
     ]
 }, { timestamps: true });
 
+templateDataSchema.plugin(mongooseDelete, { deletedAt: true, overrideMethods: 'all' });
 module.exports = mongoose.model('TemplateData', templateDataSchema);
