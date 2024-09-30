@@ -9,6 +9,11 @@ const moment = require('moment');
 const ProjectVersion = require('../../models/project/projectVersion');
 const formattedDate = moment().format('MM-DD-YYYY');
 const formattedDateTime = moment().format('MM-DD-YYYY HH:mm:ss');
+const ProjectResource = require('../../models/project/projectResources');
+const ProjectChecklist = require('../../models/project/projectChecklist');
+const ProjectTechnology = require('../../models/project/projectTechnology');
+const ProjectAssumption = require('../../models/project/projectAssumption');
+const ProjectProductivity = require('../../models/project/projectProductivity');
 
 module.exports = {
     createProject: async (req, res) => {
@@ -234,7 +239,7 @@ module.exports = {
             if (changes.length > 0) {
                 const newVersion = new ProjectVersion({
                     project: project._id,
-                    versionNumber: project.version ? project.version.versionNumber + 1 : 1,
+                    versionNumber: project.version ? parseFloat(project.version.versionNumber) + 1 : 1,
                     changes: changes.join(', '),
                     updatedBy: req.user.id
                 });
@@ -253,12 +258,12 @@ module.exports = {
                 templateDataToUpdate.changesLog.push({
                     dateChanged: formattedDateTime,
                     versionDate: formattedDate,
-                    versionNumber: templateDataToUpdate.version.versionNumber + 1,
+                    versionNumber: parseFloat(templateDataToUpdate.version.versionNumber) + 0.01,
                     action: 'M',
                     changes: changes.join(', ')
                 });
 
-                templateDataToUpdate.version.versionNumber += 1;
+                templateDataToUpdate.version.versionNumber = parseFloat(templateDataToUpdate.version.versionNumber) + 0.01;
                 templateDataToUpdate.version.versionDate = formattedDateTime;
             }
 
@@ -441,6 +446,189 @@ module.exports = {
             return res.status(500).json({
                 EC: 1,
                 message: "Error fetching projects",
+                data: { error: error.message }
+            });
+        }
+    },
+    ///////////////////
+    updateProjectComponents: async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                EC: 1,
+                message: "Validation failed",
+                data: { errors: errors.array() }
+            });
+        }
+
+        const { id } = req.params;
+        const { resources, checklists, technologies, assumptions, productivity } = req.body;
+
+        try {
+            const project = await Project.findById(id);
+            if (!project) {
+                return res.status(404).json({
+                    EC: 1,
+                    message: "Project not found",
+                    data: null
+                });
+            }
+
+            const changes = [];
+
+            // Update resources
+            if (resources && resources.length) {
+                const oldResourcesCount = project.resources.length;
+                await ProjectResource.deleteMany({ project: id });
+                const newResources = resources.map(resource => ({
+                    ...resource,
+                    project: id
+                }));
+                await ProjectResource.insertMany(newResources);
+                project.resources = newResources.map(r => r._id);
+                const newResourcesCount = newResources.length;
+                changes.push(`Added/Removed ${newResourcesCount - oldResourcesCount} resources. Total: ${newResourcesCount}`);
+            }
+
+            // Update checklists
+            if (checklists && checklists.length) {
+                const oldChecklistsCount = project.checklists.length;
+                await ProjectChecklist.deleteMany({ project: id });
+                const newChecklists = checklists.map(checklist => ({
+                    ...checklist,
+                    project: id
+                }));
+                await ProjectChecklist.insertMany(newChecklists);
+                project.checklists = newChecklists.map(c => c._id);
+                const newChecklistsCount = newChecklists.length;
+                changes.push(`Added/Removed ${newChecklistsCount - oldChecklistsCount} checklists. Total: ${newChecklistsCount}`);
+            }
+
+            // Update technologies
+            if (technologies && technologies.length) {
+                const oldTechnologiesCount = project.technologies.length;
+                await ProjectTechnology.deleteMany({ project: id });
+                const newTechnologies = technologies.map(tech => ({
+                    ...tech,
+                    project: id
+                }));
+                await ProjectTechnology.insertMany(newTechnologies);
+                project.technologies = newTechnologies.map(t => t._id);
+                const newTechnologiesCount = newTechnologies.length;
+                changes.push(`Added/Removed ${newTechnologiesCount - oldTechnologiesCount} technologies. Total: ${newTechnologiesCount}`);
+            }
+
+            // Update assumptions
+            if (assumptions && assumptions.length) {
+                const oldAssumptionsCount = project.assumptions.length;
+                await ProjectAssumption.deleteMany({ project: id });
+                const newAssumptions = assumptions.map(assumption => ({
+                    ...assumption,
+                    project: id
+                }));
+                await ProjectAssumption.insertMany(newAssumptions);
+                project.assumptions = newAssumptions.map(a => a._id);
+                const newAssumptionsCount = newAssumptions.length;
+                changes.push(`Added/Removed ${newAssumptionsCount - oldAssumptionsCount} assumptions. Total: ${newAssumptionsCount}`);
+            }
+
+            // Update productivity data
+            if (productivity && productivity.length) {
+                const oldProductivityCount = project.productivity.length;
+                await ProjectProductivity.deleteMany({ project: id });
+                const newProductivity = productivity.map(prod => ({
+                    ...prod,
+                    project: id
+                }));
+                await ProjectProductivity.insertMany(newProductivity);
+                project.productivity = newProductivity.map(p => p._id);
+                const newProductivityCount = newProductivity.length;
+                changes.push(`Added/Removed ${newProductivityCount - oldProductivityCount} productivity data. Total: ${newProductivityCount}`);
+            }
+
+            if (changes.length === 0) {
+                return res.status(400).json({
+                    EC: 1,
+                    message: "No changes provided",
+                    data: null
+                });
+            }
+
+            await project.save();
+
+            // Update templateData version
+            const templateDataToUpdate = await TemplateData.findOne({ templateId: project.template });
+            templateDataToUpdate.version.versionNumber = parseFloat(templateDataToUpdate.version.versionNumber) + 0.01;
+
+            templateDataToUpdate.changesLog.push({
+                dateChanged: moment().format('MM-DD-YYYY HH:mm:ss'),
+                versionDate: moment().format('MM-DD-YYYY'),
+                versionNumber: templateDataToUpdate.version.versionNumber,
+                action: 'M',
+                changes: changes.join(', ')
+            });
+
+            await templateDataToUpdate.save();
+
+            // Update project version log
+            const newVersion = new ProjectVersion({
+                project: project._id,
+                versionNumber: templateDataToUpdate.version.versionNumber,
+                changes: changes.join(', '),
+                updatedBy: req.user.id
+            });
+
+            await newVersion.save();
+
+            return res.status(200).json({
+                EC: 0,
+                message: "Project components updated successfully",
+                data: { result: project }
+            });
+
+        } catch (error) {
+            return res.status(500).json({
+                EC: 1,
+                message: "Error updating project components",
+                data: { error: error.message }
+            });
+        }
+    },
+    getProjectComponents: async (req, res) => {
+        const { projectId } = req.params;
+        const { componentType } = req.query;
+
+        try {
+            const validComponents = ['resources', 'checklists', 'technologies', 'assumptions', 'productivity'];
+            if (!validComponents.includes(componentType)) {
+                return res.status(400).json({
+                    EC: 1,
+                    message: "Invalid component type",
+                    data: null
+                });
+            }
+
+            const project = await Project.findById(projectId).populate(componentType).exec();
+
+            if (!project) {
+                return res.status(404).json({
+                    EC: 1,
+                    message: "Project not found",
+                    data: null
+                });
+            }
+
+            return res.status(200).json({
+                EC: 0,
+                message: `${componentType.charAt(0).toUpperCase() + componentType.slice(1)} fetched successfully`,
+                data: {
+                    result: project[componentType]
+                }
+            });
+        } catch (error) {
+            return res.status(500).json({
+                EC: 1,
+                message: `Error fetching ${componentType}`,
                 data: { error: error.message }
             });
         }
