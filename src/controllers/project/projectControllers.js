@@ -14,7 +14,9 @@ const ProjectChecklist = require('../../models/project/projectChecklist');
 const ProjectTechnology = require('../../models/project/projectTechnology');
 const ProjectAssumption = require('../../models/project/projectAssumption');
 const ProjectProductivity = require('../../models/project/projectProductivity');
-
+const ExcelJS = require('exceljs');
+const path = require('path');
+const fs = require('fs');
 module.exports = {
     createProject: async (req, res) => {
         const errors = validationResult(req);
@@ -81,7 +83,7 @@ module.exports = {
                 template,
                 reviewer: validReviewers.map(rev => rev._id),
                 status: 'Pending',
-                createdBy: req.user.id
+                lead: req.user.id
             });
 
             await newProject.save();
@@ -632,5 +634,126 @@ module.exports = {
                 data: { error: error.message }
             });
         }
+    },
+    ///Excel handler
+
+    generateExcelFile: async (req, res) => {
+        const { projectId } = req.params;
+
+        try {
+            const project = await Project.findById(projectId)
+                .populate('division lead opportunity');
+            if (!project) {
+                return res.status(404).json({
+                    EC: 1,
+                    message: 'Project not found',
+                    data: null
+                });
+            }
+
+            const templateData = await TemplateData.findOne({ templateId: project.template })
+                .populate('templateId createdBy');
+            if (!templateData) {
+                return res.status(404).json({
+                    EC: 1,
+                    message: 'Template data not found',
+                    data: null
+                });
+            }
+
+            const templateFilePath = path.join(__dirname, templateData.filePath);
+            if (!fs.existsSync(templateFilePath)) {
+                return res.status(404).json({
+                    EC: 1,
+                    message: 'Template file not found',
+                    data: null
+                });
+            }
+
+            const workbook = new ExcelJS.Workbook();
+            await workbook.xlsx.readFile(templateFilePath);
+
+            const coverSheet = workbook.getWorksheet('Cover');
+            if (!coverSheet) {
+                return res.status(400).json({
+                    EC: 1,
+                    message: 'Cover sheet is missing',
+                    data: null
+                });
+            }
+
+            this.processCoverSheet(workbook, templateData);
+            this.processLogsChangeSheet(workbook, templateData);
+            this.processSummarySheet(workbook, templateData);
+
+            const buffer = await workbook.xlsx.writeBuffer();
+
+            const date = new Date();
+            const formattedDate = date.toISOString().slice(0, 10).replace(/-/g, '');
+            const fileName = `Project_Report_${templateData.projectData.projectName || 'N/A'}_${formattedDate}.xlsx`;
+
+            res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
+            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+            return res.send(buffer);
+
+        } catch (error) {
+            console.error('Error generating Excel file:', error);
+            return res.status(500).json({
+                EC: 1,
+                message: 'Error generating Excel file',
+                data: { error: error.message }
+            });
+        }
+    },
+
+    processCoverSheet: (workbook, templateData) => {
+        const coverSheet = workbook.getWorksheet('Cover');
+        coverSheet.getCell('C2').value = `${templateData?.projectData?.projectName || 'Project Unnamed'}`;
+        coverSheet.getCell('D3').value = `${templateData?.version?.versionNumber || 'N/A'}`;
+        coverSheet.getCell('D4').value = `${templateData?.projectData?.customer || 'N/A'}`;
+        coverSheet.getCell('D5').value = `${templateData?.projectData?.status || 'N/A'}`;
+        coverSheet.getCell('D6').value = `${templateData?.version?.versionDate || 'N/A'}`;
+        coverSheet.getCell('D7').value = `${templateData?.projectData?.lastModifier || 'N/A'}`;
+        coverSheet.getCell('D8').value = `${templateData?.projectData?.division || 'N/A'}`;
+        coverSheet.getCell('D9').value = `${templateData?.version?.createdBy?.username || 'N/A'}`;
+    },
+
+    processLogsChangeSheet: (workbook, templateData) => {
+        const logsSheet = workbook.getWorksheet('Change logs');
+
+        if (!logsSheet) {
+            throw new Error('Logs Change sheet is missing');
+        }
+
+        const logs = templateData.changesLog;
+
+        let startRow = 4;
+
+        logs.forEach((log) => {
+            const currentRow = logsSheet.insertRow(startRow++, [
+                log.dateChanged || 'N/A',
+                log.versionDate || 'N/A',
+                log.versionNumber || 'N/A',
+                log.action || 'N/A',
+                log.changesDescription || 'N/A'
+            ]);
+
+            ['B', 'C', 'D', 'E', 'F'].forEach(col => {
+                const cell = currentRow.getCell(col);
+                cell.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+            });
+
+            currentRow.commit();
+        });
+    },
+
+    processSummarySheet: (workbook, templateData) => {
+
     }
 };
