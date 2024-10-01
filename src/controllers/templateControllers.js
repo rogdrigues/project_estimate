@@ -17,7 +17,6 @@ module.exports = {
 
         const { name, description, category, tags } = req.body;
         const file = req.file;
-        console.log(name, description, category, tags, file);
         try {
             if (!file) {
                 return res.status(400).json({
@@ -36,7 +35,7 @@ module.exports = {
                 createdBy: req.user.id,
                 category,
                 tags,
-                status: 'Draft'
+                status: 'Published'
             });
 
             await newTemplate.save();
@@ -131,7 +130,6 @@ module.exports = {
         }
     },
     getAllTemplates: async (req, res) => {
-        console.log("Get All Templates");
         const { includeDeleted } = req.query;
         const sortCriteria = { createdAt: -1 };
         const userId = req.user.id;
@@ -152,9 +150,6 @@ module.exports = {
                     templates = await Template.find({ status: 'Published' }).populate('category createdBy').sort(sortCriteria).exec();
                 }
             }
-
-            console.log("Template", templates);
-
             return res.status(200).json({
                 EC: 0,
                 message: "Templates fetched successfully",
