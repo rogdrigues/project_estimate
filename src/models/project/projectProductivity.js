@@ -3,14 +3,10 @@ const mongooseDelete = require('mongoose-delete');
 
 const projectProductivitySchema = new mongoose.Schema({
     project: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', required: true },
-    name: { type: String, required: true },
-    version: { type: String, required: false },
-    category: {
-        type: String,
-        enum: ['Frontend', 'Backend', 'Database', 'DevOps', 'Language'],
-        required: true
-    },
-    standard: { type: String, required: false },
+    productivity: { type: Number, required: true },
+    technology: { type: mongoose.Schema.Types.ObjectId, ref: 'Technology', required: false },
+    norm: { type: String, enum: ['Division', 'Department', 'Other'], required: true },
+    unit: { type: String, enum: ['LOC', 'StoryPoint', 'Screen'], required: true },
     originalProductivityId: { type: mongoose.Schema.Types.ObjectId, ref: 'Productivity' },
 }, { timestamps: true });
 

@@ -11,7 +11,7 @@ const projectSchema = new mongoose.Schema({
     lead: { type: mongoose.Schema.Types.ObjectId, ref: 'UserMaster' },
     startDate: { type: Date },
     deadline: { type: Date },
-    budget: { type: Number },
+    template: { type: mongoose.Schema.Types.ObjectId, ref: 'Template', required: true },
     reviewer: { type: mongoose.Schema.Types.ObjectId, ref: 'UserMaster' },
     opportunity: { type: mongoose.Schema.Types.ObjectId, ref: 'Opportunity', required: true },
     category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category' },

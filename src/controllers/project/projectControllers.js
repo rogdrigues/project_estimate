@@ -83,7 +83,9 @@ module.exports = {
                 template,
                 reviewer: validReviewers.map(rev => rev._id),
                 status: 'Pending',
-                lead: req.user.id
+                lead: req.user.id,
+                division: currentUser?.division?._id,
+                department: currentUser?.department?._id || null,
             });
 
             await newProject.save();
@@ -93,20 +95,20 @@ module.exports = {
                 templateId: templateData._id,
                 projectData: {
                     projectName: newProject.name,
-                    customer: opportunityData.customer,
+                    customer: opportunityData.customerName,
                     status: newProject.status,
-                    division: currentUser.division.code,
+                    division: currentUser?.division?.code || 'N/A',
                     lastModifier: formattedDate
                 },
                 version: {
                     versionNumber: 1,
-                    versionDate: moment().format('MM-DD-YYYY'),
+                    versionDate: Date.now(),
                     createdBy: req.user.id
                 },
                 changesLog: [
                     {
-                        dateChanged: formattedDateTime,
-                        versionDate: formattedDate,
+                        dateChanged: Date.now(),
+                        versionDate: Date.now(),
                         versionNumber: 1,
                         action: 'A',
                         changes: 'Initial project creation with basic details and template assignment'
@@ -134,6 +136,7 @@ module.exports = {
             });
 
         } catch (error) {
+            console.error('Error creating project:', error.message);
             return res.status(500).json({
                 EC: 1,
                 message: "Error creating project",
@@ -159,7 +162,7 @@ module.exports = {
         const { name, description, category, opportunity, template, reviewer } = req.body;
 
         try {
-            const project = await Project.findById(id).populate('reviewer', 'username');
+            const project = await Project.findById(id).populate('category opportunity template reviewer');
             if (!project) {
                 return res.status(404).json({
                     EC: 1,
@@ -168,10 +171,10 @@ module.exports = {
                 });
             }
 
-            const [opportunityData, templateData, reviewersData] = await Promise.all([
+            const [opportunityData, templateData, reviewerData] = await Promise.all([
                 Opportunity.findById(opportunity),
                 Template.findById(template),
-                UserMaster.find({ _id: { $in: reviewer } }).populate('role', 'permissions').select('username')
+                UserMaster.findById(reviewer).populate('role', 'permissions').select('username')
             ]);
 
             if (!opportunityData) {
@@ -190,14 +193,10 @@ module.exports = {
                 });
             }
 
-            const validReviewers = reviewersData.filter(user => {
-                return user.role && user.role.permissions.includes('project_review');
-            });
-
-            if (validReviewers.length === 0) {
+            if (!reviewerData || !reviewerData.role || !reviewerData.role.permissions.includes('project_review')) {
                 return res.status(400).json({
                     EC: 1,
-                    message: "No valid reviewers found with the permission",
+                    message: "Invalid reviewer or reviewer does not have 'project_review' permission",
                     data: null
                 });
             }
@@ -206,27 +205,13 @@ module.exports = {
 
             if (project.name !== name) changes.push(`Name changed from "${project.name}" to "${sanitizeString(name)}"`);
             if (project.description !== description) changes.push(`Description changed from "${project.description}" to "${sanitizeString(description)}"`);
-            if (project.category !== category) changes.push(`Category changed from "${project.category}" to "${category}"`);
-            if (project.opportunity.toString() !== opportunity) changes.push(`Opportunity changed from "${project.opportunity}" to "${opportunity}"`);
-            if (project.template.toString() !== template) changes.push(`Template changed from "${project.template}" to "${template}"`);
+            if (project.category._id.toString() !== category._id.toString()) changes.push(`Category changed from "${project.category.CategoryName}" to "${category.CategoryName}"`);
+            if (project.opportunity._id.toString() !== opportunity._id.toString()) changes.push(`Opportunity changed from "${project.opportunity.name}" to "${opportunity.name}"`);
+            if (project.template._id.toString() !== template._id.toString()) changes.push(`Template changed from "${project.template.name}" to "${template.name}"`);
 
-            const oldReviewerIds = project.reviewer.map(rev => rev._id.toString());
-            const newReviewerIds = validReviewers.map(rev => rev._id.toString());
-            if (JSON.stringify(oldReviewerIds) !== JSON.stringify(newReviewerIds)) {
-                const removedReviewers = project.reviewer.filter(rev => !newReviewerIds.includes(rev._id.toString()));
-                const addedReviewers = validReviewers.filter(rev => !oldReviewerIds.includes(rev._id.toString()));
-
-                const removedReviewerNames = removedReviewers.map(rev => rev.username).join(', ');
-                const addedReviewerNames = addedReviewers.map(rev => rev.username).join(', ');
-
-                let reviewerChangeMessage = `Reviewers transferred responsibility. `;
-                if (removedReviewerNames && addedReviewerNames) {
-                    reviewerChangeMessage += `Transferred from: ${removedReviewerNames} to ${addedReviewerNames}.`;
-                } else if (addedReviewerNames) {
-                    reviewerChangeMessage += `Assigned to: ${addedReviewerNames}.`;
-                }
-
-                changes.push(reviewerChangeMessage);
+            if (project.reviewer._id.toString() !== reviewer._id.toString()) {
+                changes.push(`Reviewer changed from "${project.reviewer.username}" to "${reviewerData.username}"`);
+                project.reviewer = reviewerData._id;
             }
 
             project.name = sanitizeString(name) || project.name;
@@ -234,7 +219,7 @@ module.exports = {
             project.category = category || project.category;
             project.opportunity = opportunity || project.opportunity;
             project.template = template || project.template;
-            project.reviewer = validReviewers.map(rev => rev._id) || project.reviewer;
+            project.reviewer = reviewer || project.reviewer;
             project.status = "In Progress"; //Start working at the first updated
             await project.save();
 
@@ -253,20 +238,20 @@ module.exports = {
             templateDataToUpdate.projectData.projectName = project.name;
             templateDataToUpdate.projectData.customer = opportunityData.customer;
             templateDataToUpdate.projectData.status = project.status;
-            templateDataToUpdate.projectData.lastModifier = formattedDateTime;
-            templateDataToUpdate.projectData.status = "In Progress"
+            templateDataToUpdate.projectData.lastModifier = Date.now();
+            templateDataToUpdate.projectData.status = "In Progress";
 
             if (changes.length > 0) {
                 templateDataToUpdate.changesLog.push({
-                    dateChanged: formattedDateTime,
-                    versionDate: formattedDate,
+                    dateChanged: Date.now(),
+                    versionDate: Date.now(),
                     versionNumber: parseFloat(templateDataToUpdate.version.versionNumber) + 0.01,
                     action: 'M',
                     changes: changes.join(', ')
                 });
 
                 templateDataToUpdate.version.versionNumber = parseFloat(templateDataToUpdate.version.versionNumber) + 0.01;
-                templateDataToUpdate.version.versionDate = formattedDateTime;
+                templateDataToUpdate.version.versionDate = Date.now();
             }
 
             await templateDataToUpdate.save();
@@ -303,14 +288,12 @@ module.exports = {
 
             await project.delete();
 
-            const formattedDateTime = moment().format('MM-DD-YYYY HH:mm:ss');
-
             const templateData = await TemplateData.findOne({ templateId: project.template });
             if (templateData) {
                 templateData.projectData.status = 'Archive';
                 templateData.changesLog.push({
-                    dateChanged: formattedDateTime,
-                    versionDate: moment().format('MM-DD-YYYY'),
+                    dateChanged: Date.now(),
+                    versionDate: Date.now(),
                     versionNumber: templateData.version.versionNumber,
                     action: 'M',
                     changes: `Project "${project.name}" has been temporarily archived and is now locked.`
@@ -359,14 +342,12 @@ module.exports = {
 
             await project.restore();
 
-            const formattedDateTime = moment().format('MM-DD-YYYY HH:mm:ss');
-
             const templateData = await TemplateData.findOne({ templateId: project.template });
             if (templateData) {
                 templateData.projectData.status = 'In Progress';
                 templateData.changesLog.push({
-                    dateChanged: formattedDateTime,
-                    versionDate: moment().format('MM-DD-YYYY'),
+                    dateChanged: Date.now(),
+                    versionDate: Date.now(),
                     versionNumber: templateData.version.versionNumber,
                     action: 'M',
                     changes: `Project "${project.name}" has been reactivated and is now in progress.`
@@ -419,21 +400,21 @@ module.exports = {
             if (userRole === 'Opportunity') {
                 if (includeDeleted === 'true') {
                     projects = await Project.findWithDeleted({ createdBy: userId })
-                        .populate('category department division template reviewer')
+                        .populate('category department opportunity division template reviewer')
                         .sort(sortCriteria);
                 } else {
                     projects = await Project.find({ createdBy: userId })
-                        .populate('category department division template reviewer')
+                        .populate('category department opportunity division template reviewer')
                         .sort(sortCriteria);
                 }
             } else {
                 if (includeDeleted === 'true') {
                     projects = await Project.findWithDeleted()
-                        .populate('category department division template reviewer')
+                        .populate('category department opportunity division template reviewer')
                         .sort(sortCriteria);
                 } else {
                     projects = await Project.find()
-                        .populate('category department division template reviewer')
+                        .populate('category department opportunity division template reviewer')
                         .sort(sortCriteria);
                 }
             }
@@ -448,6 +429,38 @@ module.exports = {
             return res.status(500).json({
                 EC: 1,
                 message: "Error fetching projects",
+                data: { error: error.message }
+            });
+        }
+    },
+    getReviewers: async (req, res) => {
+        try {
+            const users = await UserMaster.find()
+                .populate('role')
+                .exec();
+
+            //filter reviewers that in role.permissions has 'project_review'
+            const reviewers = users.filter(user => {
+                return user.role && user.role.permissions.includes('project_review');
+            });
+
+            if (!reviewers || reviewers.length === 0) {
+                return res.status(404).json({
+                    EC: 1,
+                    message: "No reviewers found",
+                    data: null
+                });
+            }
+
+            return res.status(200).json({
+                EC: 0,
+                message: "Reviewers fetched successfully",
+                data: { result: reviewers }
+            });
+        } catch (error) {
+            return res.status(500).json({
+                EC: 1,
+                message: "Error fetching reviewers",
                 data: { error: error.message }
             });
         }
@@ -563,8 +576,8 @@ module.exports = {
             templateDataToUpdate.version.versionNumber = parseFloat(templateDataToUpdate.version.versionNumber) + 0.01;
 
             templateDataToUpdate.changesLog.push({
-                dateChanged: moment().format('MM-DD-YYYY HH:mm:ss'),
-                versionDate: moment().format('MM-DD-YYYY'),
+                dateChanged: Date.now(),
+                versionDate: Date.now(),
                 versionNumber: templateDataToUpdate.version.versionNumber,
                 action: 'M',
                 changes: changes.join(', ')
@@ -684,7 +697,7 @@ module.exports = {
 
             this.processCoverSheet(workbook, templateData);
             this.processLogsChangeSheet(workbook, templateData);
-            this.processSummarySheet(workbook, templateData);
+            //this.processSummarySheet(workbook, templateData);
 
             const buffer = await workbook.xlsx.writeBuffer();
 
@@ -754,6 +767,6 @@ module.exports = {
     },
 
     processSummarySheet: (workbook, templateData) => {
-
+        // Handle later if needed
     }
 };

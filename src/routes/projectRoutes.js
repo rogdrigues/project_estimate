@@ -2,12 +2,12 @@ const express = require('express');
 const router = express.Router();
 const { check } = require('express-validator');
 const authenticateToken = require('../middlewares/authenticateToken');
-const { createProject, updateProject, deleteProject, restoreProject, getAllProjects, updateProjectComponents, getProjectComponents } = require('../controllers/project/projectControllers');
+const { createProject, updateProject, deleteProject, restoreProject, getAllProjects, updateProjectComponents, getProjectComponents, getReviewers } = require('../controllers/project/projectControllers');
 const { approveProject, getCommentsByProject, deleteComment, updateComment, addComment, rejectProject } = require('../controllers/project/projectCommentController');
 
 // Routes for project management
 router.post(
-    '/create',
+    '/create-project',
     [
         check('name', 'Project name is required').not().isEmpty(),
         check('category', 'Project category is required').not().isEmpty(),
@@ -43,7 +43,7 @@ router.put(
 );
 
 router.get(
-    '/list',
+    '/list-all-project',
     authenticateToken,
     getAllProjects
 );
@@ -55,10 +55,16 @@ router.put(
 );
 
 router.get(
-    '/components/:projectId',
+    '/list-components/:projectId',
     authenticateToken,
     getProjectComponents
 );
+
+router.get(
+    '/list-reviewers',
+    authenticateToken,
+    getReviewers
+)
 
 // Routes for project comments
 router.post(
