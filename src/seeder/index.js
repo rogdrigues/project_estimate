@@ -15,6 +15,9 @@ const opportunityVersionModel = require('../models/opportunity/presaleOpportunit
 const presalePlanModel = require('../models/opportunity/presalePlan');
 const presalePlanVersionModel = require('../models/opportunity/presalePlanVersion');
 const presalePlanCommentModel = require('../models/opportunity/presalePlanComments');
+const templateModel = require('../models/template/template');
+const templateData = require('../models/template/templateData');
+const projectModel = require('../models/project/project');
 const seedAllData = async () => {
     try {
         await seedPermissions();
@@ -35,6 +38,9 @@ const seedAllData = async () => {
         await presalePlanModel.deleteMany({});
         await presalePlanVersionModel.deleteMany({});
         await presalePlanCommentModel.deleteMany({});
+        await templateModel.deleteMany({});
+        await projectModel.deleteMany({});
+        await templateData.deleteMany({});
 
         console.log("Seeding completed successfully.");
     } catch (error) {
