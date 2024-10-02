@@ -14,6 +14,12 @@ const ProjectChecklist = require('../../models/project/projectChecklist');
 const ProjectTechnology = require('../../models/project/projectTechnology');
 const ProjectAssumption = require('../../models/project/projectAssumption');
 const ProjectProductivity = require('../../models/project/projectProductivity');
+const Assumption = require('../../models/assumption');
+const Resource = require('../../models/resource');
+const Checklist = require('../../models/checklist');
+const Technology = require('../../models/technology');
+const Productivity = require('../../models/productivity');
+
 const ExcelJS = require('exceljs');
 const path = require('path');
 const fs = require('fs');
@@ -400,21 +406,21 @@ module.exports = {
             if (userRole === 'Opportunity') {
                 if (includeDeleted === 'true') {
                     projects = await Project.findWithDeleted({ createdBy: userId })
-                        .populate('category department opportunity division template reviewer')
+                        .populate('category opportunity division template lead reviewer')
                         .sort(sortCriteria);
                 } else {
                     projects = await Project.find({ createdBy: userId })
-                        .populate('category department opportunity division template reviewer')
+                        .populate('category opportunity division template lead reviewer')
                         .sort(sortCriteria);
                 }
             } else {
                 if (includeDeleted === 'true') {
                     projects = await Project.findWithDeleted()
-                        .populate('category department opportunity division template reviewer')
+                        .populate('category opportunity division template lead reviewer')
                         .sort(sortCriteria);
                 } else {
                     projects = await Project.find()
-                        .populate('category department opportunity division template reviewer')
+                        .populate('category opportunity division template lead reviewer')
                         .sort(sortCriteria);
                 }
             }
@@ -480,7 +486,7 @@ module.exports = {
         const { resources, checklists, technologies, assumptions, productivity } = req.body;
 
         try {
-            const project = await Project.findById(id);
+            const project = await Project.findById(id).populate('resources checklists technologies assumptions productivity').exec();
             if (!project) {
                 return res.status(404).json({
                     EC: 1,
@@ -491,74 +497,213 @@ module.exports = {
 
             const changes = [];
 
-            // Update resources
-            if (resources && resources.length) {
-                const oldResourcesCount = project.resources.length;
-                await ProjectResource.deleteMany({ project: id });
-                const newResources = resources.map(resource => ({
-                    ...resource,
-                    project: id
-                }));
-                await ProjectResource.insertMany(newResources);
-                project.resources = newResources.map(r => r._id);
-                const newResourcesCount = newResources.length;
-                changes.push(`Added/Removed ${newResourcesCount - oldResourcesCount} resources. Total: ${newResourcesCount}`);
-            }
-
-            // Update checklists
-            if (checklists && checklists.length) {
-                const oldChecklistsCount = project.checklists.length;
-                await ProjectChecklist.deleteMany({ project: id });
-                const newChecklists = checklists.map(checklist => ({
-                    ...checklist,
-                    project: id
-                }));
-                await ProjectChecklist.insertMany(newChecklists);
-                project.checklists = newChecklists.map(c => c._id);
-                const newChecklistsCount = newChecklists.length;
-                changes.push(`Added/Removed ${newChecklistsCount - oldChecklistsCount} checklists. Total: ${newChecklistsCount}`);
-            }
-
-            // Update technologies
-            if (technologies && technologies.length) {
-                const oldTechnologiesCount = project.technologies.length;
-                await ProjectTechnology.deleteMany({ project: id });
-                const newTechnologies = technologies.map(tech => ({
-                    ...tech,
-                    project: id
-                }));
-                await ProjectTechnology.insertMany(newTechnologies);
-                project.technologies = newTechnologies.map(t => t._id);
-                const newTechnologiesCount = newTechnologies.length;
-                changes.push(`Added/Removed ${newTechnologiesCount - oldTechnologiesCount} technologies. Total: ${newTechnologiesCount}`);
-            }
-
-            // Update assumptions
             if (assumptions && assumptions.length) {
-                const oldAssumptionsCount = project.assumptions.length;
-                await ProjectAssumption.deleteMany({ project: id });
-                const newAssumptions = assumptions.map(assumption => ({
-                    ...assumption,
-                    project: id
-                }));
-                await ProjectAssumption.insertMany(newAssumptions);
-                project.assumptions = newAssumptions.map(a => a._id);
-                const newAssumptionsCount = newAssumptions.length;
-                changes.push(`Added/Removed ${newAssumptionsCount - oldAssumptionsCount} assumptions. Total: ${newAssumptionsCount}`);
+                const newAssumptionIds = assumptions.map(a => a);
+                const oldAssumptionIds = project.assumptions.map(a => a.toString());
+
+                const addedAssumptionIds = newAssumptionIds.filter(id => !oldAssumptionIds.includes(id));
+                const removedAssumptionIds = oldAssumptionIds.filter(id => !newAssumptionIds.includes(id));
+
+                if (addedAssumptionIds.length) {
+                    const addedAssumptions = await Assumption.find({ _id: { $in: addedAssumptionIds } });
+
+                    const newProjectAssumptions = await ProjectAssumption.insertMany(
+                        addedAssumptions.map(a => ({
+                            project: project._id,
+                            title: a.title,
+                            content: a.content,
+                            category: a.category?._id,
+                            originalAssumptionId: a._id
+                        }))
+                    );
+
+                    const newProjectAssumptionIds = newProjectAssumptions.map(pa => pa._id);
+                    project.assumptions.push(...newProjectAssumptionIds);
+
+                    const addedAssumptionNames = addedAssumptions.map(a => a.title).join(', ');
+                    changes.push(`Added ${addedAssumptionIds.length} new assumptions: ${addedAssumptionNames}`);
+                }
+
+                if (removedAssumptionIds.length) {
+                    const removedAssumptions = await Assumption.find({ _id: { $in: removedAssumptionIds } });
+
+                    await ProjectAssumption.deleteMany({ project: project._id, originalAssumptionId: { $in: removedAssumptionIds } });
+
+                    project.assumptions = project.assumptions.filter(a => !removedAssumptionIds.includes(a.toString()));
+
+                    const removedAssumptionNames = removedAssumptions.map(a => a.title).join(', ');
+                    changes.push(`Removed ${removedAssumptionIds.length} assumptions: ${removedAssumptionNames}`);
+                }
             }
 
-            // Update productivity data
+            // Handle Resources
+            if (resources && resources.length) {
+                const newResourceIds = resources.map(r => r);
+                const oldResourceIds = project.resources.map(r => r.toString());
+
+                const addedResourceIds = newResourceIds.filter(id => !oldResourceIds.includes(id));
+                const removedResourceIds = oldResourceIds.filter(id => !newResourceIds.includes(id));
+
+                if (addedResourceIds.length) {
+                    const addedResources = await Resource.find({ _id: { $in: addedResourceIds } });
+
+                    const newProjectResources = await ProjectResource.insertMany(
+                        addedResources.map(r => ({
+                            project: project._id,
+                            name: r.name,
+                            unitPrice: r.unitPrice,
+                            location: r.location,
+                            level: r.level,
+                            currency: r.currency,
+                            conversionRate: r.conversionRate,
+                            originalResourceId: r._id
+                        }))
+                    );
+
+                    const newProjectResourceIds = newProjectResources.map(pr => pr._id);
+                    project.resources.push(...newProjectResourceIds);
+
+                    const addedResourceNames = addedResources.map(r => r.name).join(', ');
+                    changes.push(`Added ${addedResourceIds.length} new resources: ${addedResourceNames}`);
+                }
+
+                if (removedResourceIds.length) {
+                    const removedResources = await Resource.find({ _id: { $in: removedResourceIds } });
+
+                    await ProjectResource.deleteMany({ project: project._id, originalResourceId: { $in: removedResourceIds } });
+
+                    project.resources = project.resources.filter(r => !removedResourceIds.includes(r.toString()));
+
+                    const removedResourceNames = removedResources.map(r => r.name).join(', ');
+                    changes.push(`Removed ${removedResourceIds.length} resources: ${removedResourceNames}`);
+                }
+            }
+
+            // Handle Checklists
+            if (checklists && checklists.length) {
+                const newChecklistIds = checklists.map(c => c);
+                const oldChecklistIds = project.checklists.map(c => c.toString());
+
+                const addedChecklistIds = newChecklistIds.filter(id => !oldChecklistIds.includes(id));
+                const removedChecklistIds = oldChecklistIds.filter(id => !newChecklistIds.includes(id));
+
+                if (addedChecklistIds.length) {
+                    const addedChecklists = await Checklist.find({ _id: { $in: addedChecklistIds } });
+
+                    const newProjectChecklists = await ProjectChecklist.insertMany(
+                        addedChecklists.map(c => ({
+                            project: project._id,
+                            name: c.name,
+                            category: c.category?._id,
+                            parentID: c.parentID,
+                            subClass: c.subClass,
+                            description: c.description,
+                            note: c.note,
+                            assessment: c.assessment,
+                            priority: c.priority,
+                            originalChecklistId: c._id
+                        }))
+                    );
+
+                    const newProjectChecklistIds = newProjectChecklists.map(pc => pc._id);
+                    project.checklists.push(...newProjectChecklistIds);
+
+                    const addedChecklistNames = addedChecklists.map(c => c.name).join(', ');
+                    changes.push(`Added ${addedChecklistIds.length} new checklists: ${addedChecklistNames}`);
+                }
+
+                if (removedChecklistIds.length) {
+                    const removedChecklists = await Checklist.find({ _id: { $in: removedChecklistIds } });
+
+                    await ProjectChecklist.deleteMany({ project: project._id, originalChecklistId: { $in: removedChecklistIds } });
+
+                    project.checklists = project.checklists.filter(c => !removedChecklistIds.includes(c.toString()));
+
+                    const removedChecklistNames = removedChecklists.map(c => c.name).join(', ');
+                    changes.push(`Removed ${removedChecklistIds.length} checklists: ${removedChecklistNames}`);
+                }
+            }
+
+            // Handle Technologies
+            if (technologies && technologies.length) {
+                const newTechnologyIds = technologies.map(t => t);
+                const oldTechnologyIds = project.technologies.map(t => t.toString());
+
+                const addedTechnologyIds = newTechnologyIds.filter(id => !oldTechnologyIds.includes(id));
+                const removedTechnologyIds = oldTechnologyIds.filter(id => !newTechnologyIds.includes(id));
+
+                if (addedTechnologyIds.length) {
+                    const addedTechnologies = await Technology.find({ _id: { $in: addedTechnologyIds } });
+
+                    const newProjectTechnologies = await ProjectTechnology.insertMany(
+                        addedTechnologies.map(t => ({
+                            project: project._id,
+                            name: t.name,
+                            version: t.version,
+                            category: t.category?._id,
+                            standard: t.standard,
+                            originalTechnologyId: t._id
+                        }))
+                    );
+
+                    const newProjectTechnologyIds = newProjectTechnologies.map(pt => pt._id);
+                    project.technologies.push(...newProjectTechnologyIds);
+
+                    const addedTechnologyNames = addedTechnologies.map(t => t.name).join(', ');
+                    changes.push(`Added ${addedTechnologyIds.length} new technologies: ${addedTechnologyNames}`);
+                }
+
+                if (removedTechnologyIds.length) {
+                    const removedTechnologies = await Technology.find({ _id: { $in: removedTechnologyIds } });
+
+                    await ProjectTechnology.deleteMany({ project: project._id, originalTechnologyId: { $in: removedTechnologyIds } });
+
+                    project.technologies = project.technologies.filter(t => !removedTechnologyIds.includes(t.toString()));
+
+                    const removedTechnologyNames = removedTechnologies.map(t => t.name).join(', ');
+                    changes.push(`Removed ${removedTechnologyIds.length} technologies: ${removedTechnologyNames}`);
+                }
+            }
+
+            // Handle Productivity
             if (productivity && productivity.length) {
-                const oldProductivityCount = project.productivity.length;
-                await ProjectProductivity.deleteMany({ project: id });
-                const newProductivity = productivity.map(prod => ({
-                    ...prod,
-                    project: id
-                }));
-                await ProjectProductivity.insertMany(newProductivity);
-                project.productivity = newProductivity.map(p => p._id);
-                const newProductivityCount = newProductivity.length;
-                changes.push(`Added/Removed ${newProductivityCount - oldProductivityCount} productivity data. Total: ${newProductivityCount}`);
+                const newProductivityIds = productivity.map(p => p);
+                const oldProductivityIds = project.productivity.map(p => p.toString());
+
+                const addedProductivityIds = newProductivityIds.filter(id => !oldProductivityIds.includes(id));
+                const removedProductivityIds = oldProductivityIds.filter(id => !newProductivityIds.includes(id));
+
+                if (addedProductivityIds.length) {
+                    const addedProductivity = await Productivity.find({ _id: { $in: addedProductivityIds } });
+
+                    const newProjectProductivity = await ProjectProductivity.insertMany(
+                        addedProductivity.map(p => ({
+                            project: project._id,
+                            productivity: p.productivity,
+                            technology: p.technology?._id,
+                            norm: p.norm,
+                            unit: p.unit,
+                            originalProductivityId: p._id
+                        }))
+                    );
+
+                    const newProjectProductivityIds = newProjectProductivity.map(pp => pp._id);
+                    project.productivity.push(...newProjectProductivityIds);
+
+                    const addedProductivityNames = addedProductivity.map(p => p.name).join(', ');
+                    changes.push(`Added ${addedProductivityIds.length} new productivity items: ${addedProductivityNames}`);
+                }
+
+                if (removedProductivityIds.length) {
+                    const removedProductivity = await Productivity.find({ _id: { $in: removedProductivityIds } });
+
+                    await ProjectProductivity.deleteMany({ project: project._id, originalProductivityId: { $in: removedProductivityIds } });
+
+                    project.productivity = project.productivity.filter(p => !removedProductivityIds.includes(p.toString()));
+
+                    const removedProductivityNames = removedProductivity.map(p => p.name).join(', ');
+                    changes.push(`Removed ${removedProductivityIds.length} productivity items: ${removedProductivityNames}`);
+                }
             }
 
             if (changes.length === 0) {
@@ -602,6 +747,7 @@ module.exports = {
             });
 
         } catch (error) {
+            console.log('Error updating project components:', error.message);
             return res.status(500).json({
                 EC: 1,
                 message: "Error updating project components",
@@ -609,12 +755,14 @@ module.exports = {
             });
         }
     },
+
     getProjectComponents: async (req, res) => {
         const { projectId } = req.params;
         const { componentType } = req.query;
 
         try {
             const validComponents = ['resources', 'checklists', 'technologies', 'assumptions', 'productivity'];
+
             if (!validComponents.includes(componentType)) {
                 return res.status(400).json({
                     EC: 1,
@@ -623,8 +771,7 @@ module.exports = {
                 });
             }
 
-            const project = await Project.findById(projectId).populate(componentType).exec();
-
+            const project = await Project.findById(projectId);
             if (!project) {
                 return res.status(404).json({
                     EC: 1,
@@ -633,13 +780,40 @@ module.exports = {
                 });
             }
 
+            let componentData;
+
+            switch (componentType) {
+                case 'resources':
+                    componentData = await ProjectResource.find({ project: projectId });
+                    break;
+                case 'checklists':
+                    componentData = await ProjectChecklist.find({ project: projectId }).populate('category');
+                    break;
+                case 'technologies':
+                    componentData = await ProjectTechnology.find({ project: projectId });
+                    break;
+                case 'assumptions':
+                    componentData = await ProjectAssumption.find({ project: projectId }).populate('category');
+                    break;
+                case 'productivity':
+                    componentData = await ProjectProductivity.find({ project: projectId }).populate('technology');
+                    break;
+                default:
+                    return res.status(400).json({
+                        EC: 1,
+                        message: "Invalid component type",
+                        data: null
+                    });
+            }
+
             return res.status(200).json({
                 EC: 0,
                 message: `${componentType.charAt(0).toUpperCase() + componentType.slice(1)} fetched successfully`,
                 data: {
-                    result: project[componentType]
+                    result: componentData
                 }
             });
+
         } catch (error) {
             return res.status(500).json({
                 EC: 1,
@@ -648,6 +822,8 @@ module.exports = {
             });
         }
     },
+
+
     ///Excel handler
 
     generateExcelFile: async (req, res) => {
