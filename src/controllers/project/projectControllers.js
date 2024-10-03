@@ -497,13 +497,24 @@ module.exports = {
 
             const changes = [];
 
-            if (assumptions && assumptions.length) {
+            if (assumptions) {
 
                 const newAssumptionIds = assumptions.map(a => a);
                 const oldAssumptionIds = project.assumptions.map(a => a.originalAssumptionId.toString());
 
                 const addedAssumptionIds = newAssumptionIds.filter(id => !oldAssumptionIds.includes(id));
                 const removedAssumptionIds = oldAssumptionIds.filter(id => !newAssumptionIds.includes(id));
+
+                if (newAssumptionIds.length === 0 && oldAssumptionIds.length > 0) {
+                    const removedAssumptions = await Assumption.find({ _id: { $in: oldAssumptionIds } });
+
+                    await ProjectAssumption.deleteMany({ project: project._id });
+
+                    project.assumptions = [];
+
+                    const removedAssumptionNames = removedAssumptions.map(a => a.title).join(', ');
+                    changes.push(`Removed all assumptions: ${removedAssumptionNames}`);
+                }
 
                 if (addedAssumptionIds.length) {
                     const addedAssumptions = await Assumption.find({ _id: { $in: addedAssumptionIds } });
@@ -538,12 +549,24 @@ module.exports = {
             }
 
             // Handle Resources
-            if (resources && resources.length) {
+            if (resources) {
+
                 const newResourceIds = resources.map(r => r);
                 const oldResourceIds = project.resources.map(r => r.originalResourceId.toString());
 
                 const addedResourceIds = newResourceIds.filter(id => !oldResourceIds.includes(id));
                 const removedResourceIds = oldResourceIds.filter(id => !newResourceIds.includes(id));
+
+                if (newResourceIds.length === 0 && oldResourceIds.length > 0) {
+                    const removedResources = await Resource.find({ _id: { $in: oldResourceIds } });
+
+                    await ProjectResource.deleteMany({ project: project._id });
+
+                    project.resources = [];
+
+                    const removedResourceNames = removedResources.map(r => r.name).join(', ');
+                    changes.push(`Removed all resources: ${removedResourceNames}`);
+                }
 
                 if (addedResourceIds.length) {
                     const addedResources = await Resource.find({ _id: { $in: addedResourceIds } });
@@ -580,13 +603,23 @@ module.exports = {
                 }
             }
 
-            // Handle Checklists
-            if (checklists && checklists.length) {
+            if (checklists) {
                 const newChecklistIds = checklists.map(c => c);
                 const oldChecklistIds = project.checklists.map(c => c.originalChecklistId.toString());
 
                 const addedChecklistIds = newChecklistIds.filter(id => !oldChecklistIds.includes(id));
                 const removedChecklistIds = oldChecklistIds.filter(id => !newChecklistIds.includes(id));
+
+                if (newChecklistIds.length === 0 && oldChecklistIds.length > 0) {
+                    const removedChecklists = await Checklist.find({ _id: { $in: oldChecklistIds } });
+
+                    await ProjectChecklist.deleteMany({ project: project._id });
+
+                    project.checklists = [];
+
+                    const removedChecklistNames = removedChecklists.map(c => c.name).join(', ');
+                    changes.push(`Removed all checklists: ${removedChecklistNames}`);
+                }
 
                 if (addedChecklistIds.length) {
                     const addedChecklists = await Checklist.find({ _id: { $in: addedChecklistIds } });
@@ -625,13 +658,25 @@ module.exports = {
                 }
             }
 
+
             // Handle Technologies
-            if (technologies && technologies.length) {
+            if (technologies) {
                 const newTechnologyIds = technologies.map(t => t);
-                const oldTechnologyIds = project.technologies.map(t => t.originalTechnologyId.toString());
+                const oldTechnologyIds = project.technologies.map(t => t.originalTechId.toString());
 
                 const addedTechnologyIds = newTechnologyIds.filter(id => !oldTechnologyIds.includes(id));
                 const removedTechnologyIds = oldTechnologyIds.filter(id => !newTechnologyIds.includes(id));
+
+                if (newTechnologyIds.length === 0 && oldTechnologyIds.length > 0) {
+                    const removedTechnologies = await Technology.find({ _id: { $in: oldTechnologyIds } });
+
+                    await ProjectTechnology.deleteMany({ project: project._id });
+
+                    project.technologies = [];
+
+                    const removedTechnologyNames = removedTechnologies.map(t => t.name).join(', ');
+                    changes.push(`Removed all technologies: ${removedTechnologyNames}`);
+                }
 
                 if (addedTechnologyIds.length) {
                     const addedTechnologies = await Technology.find({ _id: { $in: addedTechnologyIds } });
@@ -641,9 +686,9 @@ module.exports = {
                             project: project._id,
                             name: t.name,
                             version: t.version,
-                            category: t.category?._id,
+                            category: t.category,
                             standard: t.standard,
-                            originalTechnologyId: t._id
+                            originalTechId: t._id
                         }))
                     );
 
@@ -657,7 +702,7 @@ module.exports = {
                 if (removedTechnologyIds.length) {
                     const removedTechnologies = await Technology.find({ _id: { $in: removedTechnologyIds } });
 
-                    await ProjectTechnology.deleteMany({ project: project._id, originalTechnologyId: { $in: removedTechnologyIds } });
+                    await ProjectTechnology.deleteMany({ project: project._id, originalTechId: { $in: removedTechnologyIds } });
 
                     project.technologies = project.technologies.filter(t => !removedTechnologyIds.includes(t.toString()));
 
@@ -666,13 +711,25 @@ module.exports = {
                 }
             }
 
+
             // Handle Productivity
-            if (productivity && productivity.length) {
+            if (productivity) {
                 const newProductivityIds = productivity.map(p => p);
                 const oldProductivityIds = project.productivity.map(p => p.originalProductivityId.toString());
 
                 const addedProductivityIds = newProductivityIds.filter(id => !oldProductivityIds.includes(id));
                 const removedProductivityIds = oldProductivityIds.filter(id => !newProductivityIds.includes(id));
+
+                if (newProductivityIds.length === 0 && oldProductivityIds.length > 0) {
+                    const removedProductivity = await Productivity.find({ _id: { $in: oldProductivityIds } });
+
+                    await ProjectProductivity.deleteMany({ project: project._id });
+
+                    project.productivity = [];
+
+                    const removedProductivityNames = removedProductivity.map(p => p.name).join(', ');
+                    changes.push(`Removed all productivity items: ${removedProductivityNames}`);
+                }
 
                 if (addedProductivityIds.length) {
                     const addedProductivity = await Productivity.find({ _id: { $in: addedProductivityIds } });
@@ -706,6 +763,7 @@ module.exports = {
                     changes.push(`Removed ${removedProductivityIds.length} productivity items: ${removedProductivityNames}`);
                 }
             }
+
 
             if (changes.length === 0) {
                 return res.status(400).json({
