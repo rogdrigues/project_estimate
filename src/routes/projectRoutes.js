@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { check } = require('express-validator');
 const authenticateToken = require('../middlewares/authenticateToken');
-const { createProject, updateProject, deleteProject, restoreProject, getAllProjects, updateProjectComponents, getProjectComponents, getReviewers } = require('../controllers/project/projectControllers');
+const { createProject, updateProject, deleteProject, restoreProject, getAllProjects, updateProjectComponents, getProjectComponents, getReviewers, updateProjectAssumption, updateProjectChecklist, updateProjectProductivity, updateProjectTechnology, updateProjectResource } = require('../controllers/project/projectControllers');
 const { approveProject, getCommentsByProject, deleteComment, updateComment, addComment, rejectProject } = require('../controllers/project/projectCommentController');
 
 // Routes for project management
@@ -65,6 +65,63 @@ router.get(
     authenticateToken,
     getReviewers
 )
+
+//for updated project components after being selected
+router.put(
+    '/update-assumption/:id',
+    [
+        check('title', 'Title is required').not().isEmpty(),
+        check('content', 'Content is required').not().isEmpty(),
+        check('category', 'Category is required').not().isEmpty()
+    ],
+    authenticateToken,
+    updateProjectAssumption
+);
+
+router.put(
+    '/update-checklist/:id',
+    [
+        check('name', 'Checklist name is required').not().isEmpty(),
+        check('category', 'Checklist category is required').not().isEmpty()
+    ],
+    authenticateToken,
+    updateProjectChecklist
+);
+
+router.put(
+    '/update-productivity/:id',
+    [
+        check('productivity', 'Productivity is required').not().isEmpty(),
+        check('technology', 'Technology is required').not().isEmpty(),
+        check('norm', 'Norm is required').not().isEmpty(),
+        check('unit', 'Unit is required').not().isEmpty()
+    ],
+    authenticateToken,
+    updateProjectProductivity
+);
+
+router.put(
+    '/update-technology/:id',
+    [
+        check('name', 'Technology name is required').not().isEmpty(),
+        check('category', 'Category is required').not().isEmpty(),
+    ],
+    authenticateToken,
+    updateProjectTechnology
+);
+
+router.put(
+    '/update-resource/:id',
+    [
+        check('name', 'Resource name is required').optional().not().isEmpty(),
+        check('unitPrice', 'Unit price is required').optional().isNumeric(),
+        check('location', 'Location is required').optional().not().isEmpty(),
+        check('currency', 'Currency is required').optional().not().isEmpty(),
+        check('level', 'Level is required').optional().not().isEmpty()
+    ],
+    authenticateToken,
+    updateProjectResource
+);
 
 // Routes for project comments
 router.post(

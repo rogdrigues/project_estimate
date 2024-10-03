@@ -882,6 +882,284 @@ module.exports = {
         }
     },
 
+    //Update project components after selecting
+    updateProjectAssumption: async (req, res) => {
+        console.log('updateProjectAssumption');
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                EC: 1,
+                message: "Validation failed",
+                data: {
+                    result: null,
+                    errors: errors.array()
+                }
+            });
+        }
+
+        const { id } = req.params;
+        const { title, content, category } = req.body;
+
+        try {
+            const assumption = await ProjectAssumption.findById(id);
+            if (!assumption) {
+                return res.status(404).json({
+                    EC: 1,
+                    message: "Assumption not found",
+                    data: {
+                        result: null
+                    }
+                });
+            }
+
+            assumption.title = title || assumption.title;
+            assumption.content = content || assumption.content;
+            assumption.category = category || assumption.category;
+
+            await assumption.save();
+
+            return res.status(200).json({
+                EC: 0,
+                message: "Project Assumption updated successfully",
+                data: {
+                    result: assumption
+                }
+            });
+        } catch (error) {
+            console.log('Error updating project assumption:', error.message);
+            return res.status(500).json({
+                EC: 1,
+                message: "Error updating project assumption",
+                data: {
+                    result: null,
+                    error: error.message
+                }
+            });
+        }
+    },
+
+    updateProjectChecklist: async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                EC: 1,
+                message: "Validation failed",
+                data: {
+                    result: null,
+                    errors: errors.array()
+                }
+            });
+        }
+
+        const { id } = req.params;
+        const { name, description, category, subClass, note, assessment, priority } = req.body;
+
+        try {
+            const checklist = await ProjectChecklist.findById(id);
+            if (!checklist) {
+                return res.status(404).json({
+                    EC: 1,
+                    message: 'Checklist not found',
+                    data: { result: null }
+                });
+            }
+
+            const existingSubClasses = await ProjectChecklist.find({ category });
+
+            let parentID = checklist.parentID;
+
+            if (!existingSubClasses.length) {
+                parentID = 1;
+            } else {
+                const existingSubClass = existingSubClasses.find(cl => cl.subClass === subClass);
+
+                if (existingSubClass) {
+                    parentID = existingSubClass.parentID;
+                } else {
+                    const maxParentId = Math.max(...existingSubClasses.map(cl => cl.parentID));
+                    parentID = maxParentId + 1;
+                }
+            }
+
+            checklist.name = sanitizeString(name) || checklist.name;
+            checklist.description = sanitizeString(description) || checklist.description;
+            checklist.category = category || checklist.category;
+            checklist.subClass = sanitizeString(subClass) || checklist.subClass;
+            checklist.note = note || checklist.note;
+            checklist.assessment = assessment || checklist.assessment;
+            checklist.priority = priority || checklist.priority;
+            checklist.parentID = parentID;
+
+            await checklist.save();
+
+            return res.status(200).json({
+                EC: 0,
+                message: 'Project Checklist updated successfully',
+                data: checklist
+            });
+        } catch (error) {
+            return res.status(500).json({
+                EC: 1,
+                message: 'Error updating project checklist',
+                data: { error: error.message }
+            });
+        }
+    },
+
+    updateProjectResource: async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                EC: 1,
+                message: "Validation failed",
+                data: {
+                    result: null,
+                    errors: errors.array()
+                }
+            });
+        }
+
+        const { id } = req.params;
+        let { name, unitPrice, location, currency, level } = req.body;
+
+        try {
+            const resource = await ProjectResource.findById(id);
+            if (!resource) {
+                return res.status(404).json({
+                    EC: 1,
+                    message: 'Resource not found',
+                    data: { result: null }
+                });
+            }
+
+            const sanitizedName = name ? sanitizeString(name) : resource.name;
+            const sanitizedLocation = location ? sanitizeString(location) : resource.location;
+
+            let conversionRate = resource.conversionRate;
+            if (currency && currency !== resource.currency) {
+                conversionRate = await getConversionRate(currency);
+            }
+
+            resource.name = sanitizedName;
+            resource.unitPrice = unitPrice || resource.unitPrice;
+            resource.location = sanitizedLocation;
+            resource.level = level || resource.level;
+            resource.currency = currency || resource.currency;
+            resource.conversionRate = conversionRate;
+
+            await resource.save();
+
+            return res.status(200).json({
+                EC: 0,
+                message: 'Project Resource updated successfully',
+                data: resource
+            });
+        } catch (error) {
+            return res.status(500).json({
+                EC: 1,
+                message: 'Error updating project resource',
+                data: { error: error.message }
+            });
+        }
+    },
+
+    updateProjectTechnology: async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                EC: 1,
+                message: "Validation failed",
+                data: {
+                    result: null,
+                    errors: errors.array()
+                }
+            });
+        }
+
+        const { id } = req.params;
+        const { name, standard, version, category } = req.body;
+
+        try {
+            const technology = await ProjectTechnology.findById(id);
+            if (!technology) {
+                return res.status(404).json({
+                    EC: 1,
+                    message: 'Project Technology not found',
+                    data: { result: null }
+                });
+            }
+
+            technology.name = name || technology.name;
+            technology.standard = standard || technology.standard;
+            technology.version = version || technology.version;
+            technology.category = category || technology.category;
+
+            await technology.save();
+
+            return res.status(200).json({
+                EC: 0,
+                message: 'Project Technology updated successfully',
+                data: technology
+            });
+        } catch (error) {
+            return res.status(500).json({
+                EC: 1,
+                message: 'Error updating project technology',
+                data: { error: error.message }
+            });
+        }
+    },
+
+    updateProjectProductivity: async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                EC: 1,
+                message: "Validation failed",
+                data: {
+                    result: null,
+                    errors: errors.array()
+                }
+            });
+        }
+
+        const { id } = req.params;
+        const { productivity, technology, norm, unit } = req.body;
+
+        try {
+            const prod = await ProjectProductivity.findById(id);
+            if (!prod) {
+                return res.status(404).json({
+                    EC: 1,
+                    message: 'Productivity not found',
+                    data: { result: null }
+                });
+            }
+
+
+            const sanitizedNorm = sanitizeString(norm);
+            const sanitizedUnit = sanitizeString(unit);
+
+            prod.productivity = productivity || prod.productivity;
+            prod.technology = technology._id || prod.technology._id;
+            prod.norm = sanitizedNorm || prod.norm;
+            prod.unit = sanitizedUnit || prod.unit;
+
+            await prod.save();
+
+            return res.status(200).json({
+                EC: 0,
+                message: 'Project Productivity updated successfully',
+                data: prod
+            });
+        } catch (error) {
+            return res.status(500).json({
+                EC: 1,
+                message: 'Error updating project productivity',
+                data: { error: error.message }
+            });
+        }
+    },
 
     ///Excel handler
 
