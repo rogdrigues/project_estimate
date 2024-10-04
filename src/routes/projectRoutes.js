@@ -3,7 +3,7 @@ const router = express.Router();
 const { check } = require('express-validator');
 const authenticateToken = require('../middlewares/authenticateToken');
 const { createProject, updateProject, deleteProject, restoreProject, getAllProjects, updateProjectComponents, getProjectComponents, getReviewers, updateProjectAssumption, updateProjectChecklist, updateProjectProductivity, updateProjectTechnology, updateProjectResource } = require('../controllers/project/projectControllers');
-const { approveProject, getCommentsByProject, deleteComment, updateComment, addComment, rejectProject } = require('../controllers/project/projectCommentController');
+const { approveProject, getCommentsByProject, deleteComment, updateComment, addComment, rejectProject, startReviewProcess, requestReview } = require('../controllers/project/projectCommentController');
 
 // Routes for project management
 router.post(
@@ -122,14 +122,13 @@ router.put(
     authenticateToken,
     updateProjectResource
 );
-
-// Routes for project comments
+// Project comment routes
 router.post(
-    '/comments/add',
+    '/comments/add/:projectId',
     [
-        check('projectId', 'Project ID is required').not().isEmpty(),
         check('comment', 'Comment content is required').not().isEmpty(),
         check('action', 'Action type is required').not().isEmpty(),
+        check('decision', 'Decision is required if action is Approval or Rejected').optional(),
     ],
     authenticateToken,
     addComment
@@ -137,6 +136,9 @@ router.post(
 
 router.put(
     '/comments/update/:id',
+    [
+        check('comment', 'Updated comment is required').not().isEmpty(),
+    ],
     authenticateToken,
     updateComment
 );
@@ -148,22 +150,21 @@ router.delete(
 );
 
 router.get(
-    '/comments/project/:projectId',
+    '/comments/list/:projectId',
     authenticateToken,
     getCommentsByProject
 );
 
-// Routes for approving or rejecting a project
 router.post(
-    '/approve/:projectId',
+    '/comments/start-review/:projectId',
     authenticateToken,
-    approveProject
+    startReviewProcess
 );
 
 router.post(
-    '/reject/:projectId',
+    '/comments/request-review/:projectId',
     authenticateToken,
-    rejectProject
+    requestReview
 );
 
 module.exports = router;

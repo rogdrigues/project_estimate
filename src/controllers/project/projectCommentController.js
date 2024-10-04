@@ -3,6 +3,8 @@ const Project = require('../../models/project/project');
 const { validationResult } = require('express-validator');
 const moment = require('moment');
 const ProjectVersion = require('../../models/project/projectVersion');
+const TemplateData = require('../../models/template/templateData');
+const UserMaster = require('../../models/userMaster');
 
 module.exports = {
     addComment: async (req, res) => {
@@ -15,7 +17,7 @@ module.exports = {
             });
         }
 
-        const { projectId, comment, action, decision } = req.body;
+        const { projectId, comment, action = 'Chat', decision, parentComment } = req.body;
 
         try {
             const project = await Project.findById(projectId);
@@ -27,15 +29,91 @@ module.exports = {
                 });
             }
 
-            const newComment = new ProjectComment({
+            if (project.status === 'Completed' || project.status === 'Rejected') {
+                return res.status(400).json({
+                    EC: 1,
+                    message: `Cannot add comment, the project is already ${project.status.toLowerCase()}.`,
+                    data: null
+                });
+            }
+
+            const user = await UserMaster.findById(req.user.id).populate('role');
+            if (!user) {
+                return res.status(404).json({
+                    EC: 1,
+                    message: "User not found",
+                    data: null
+                });
+            }
+
+            const userRole = user.role.roleName;
+
+            let parentCommentObj = null;
+            if (parentComment) {
+                parentCommentObj = await ProjectComment.findById(parentComment);
+                if (!parentCommentObj) {
+                    return res.status(404).json({
+                        EC: 1,
+                        message: "Parent comment not found",
+                        data: null
+                    });
+                }
+            }
+
+            if (action === 'Approval' || action === 'Rejected') {
+                if (!decision || !['Approved', 'Rejected'].includes(decision)) {
+                    return res.status(400).json({
+                        EC: 1,
+                        message: "Approval or Rejection action requires a valid decision (Approved or Rejected)",
+                        data: null
+                    });
+                }
+            }
+
+            const newCommentData = {
                 project: projectId,
                 user: req.user.id,
                 comment,
                 action,
-                decision: decision || 'Pending'
-            });
+                parentComment: parentCommentObj ? parentCommentObj._id : null,
+                role: userRole
+            };
 
+            if (action !== 'Chat') {
+                newCommentData.decision = decision || 'Pending';
+            }
+
+            const newComment = new ProjectComment(newCommentData);
             await newComment.save();
+
+            if (action === 'Approval' || action === 'Rejected') {
+                project.status = decision === 'Approved' ? 'Completed' : 'Rejected';
+                await project.save();
+
+                const templateData = await TemplateData.findOne({ templateId: project.template });
+                if (templateData) {
+                    const versionChange = decision === 'Approved' ? 1 : 0.1;
+                    templateData.version.versionNumber += versionChange;
+                    templateData.projectData.status = project.status;
+                    templateData.projectData.lastModifier = Date.now();
+                    templateData.changesLog.push({
+                        dateChanged: Date.now(),
+                        versionDate: Date.now(),
+                        versionNumber: templateData.version.versionNumber,
+                        action: 'M',
+                        changes: `Project ${decision === 'Approved' ? 'approved' : 'rejected'} by ${user.username}`
+                    });
+                    await templateData.save();
+                }
+
+                const newVersion = new ProjectVersion({
+                    project: project._id,
+                    versionNumber: templateData.version.versionNumber,
+                    changes: `Project ${decision === 'Approved' ? 'approved' : 'rejected'} by ${user.username}`,
+                    updatedBy: req.user.id
+                });
+                await newVersion.save();
+            }
 
             return res.status(201).json({
                 EC: 0,
@@ -53,7 +131,7 @@ module.exports = {
 
     updateComment: async (req, res) => {
         const { id } = req.params;
-        const { comment, isResolved, decision } = req.body;
+        const { comment } = req.body;
 
         try {
             const projectComment = await ProjectComment.findById(id);
@@ -65,9 +143,15 @@ module.exports = {
                 });
             }
 
+            if (projectComment.user.toString() !== req.user.id) {
+                return res.status(403).json({
+                    EC: 1,
+                    message: "You do not have permission to edit this comment",
+                    data: null
+                });
+            }
+
             projectComment.comment = comment || projectComment.comment;
-            projectComment.isResolved = isResolved !== undefined ? isResolved : projectComment.isResolved;
-            projectComment.decision = decision || projectComment.decision;
 
             await projectComment.save();
 
@@ -85,6 +169,7 @@ module.exports = {
         }
     },
 
+
     deleteComment: async (req, res) => {
         const { id } = req.params;
 
@@ -98,11 +183,22 @@ module.exports = {
                 });
             }
 
+            if (projectComment.user.toString() !== req.user.id) {
+                const user = await UserMaster.findById(req.user.id).populate('role');
+                if (!user || !user.role.permissions.includes('admin') && !user.role.permissions.includes('project_review')) {
+                    return res.status(403).json({
+                        EC: 1,
+                        message: "You do not have permission to delete this comment",
+                        data: null
+                    });
+                }
+            }
+
             await projectComment.delete();
 
             return res.status(200).json({
                 EC: 0,
-                message: "Comment deleted successfully",
+                message: "Comment marked as deleted",
                 data: { result: projectComment }
             });
         } catch (error) {
@@ -113,6 +209,7 @@ module.exports = {
             });
         }
     },
+
 
     getCommentsByProject: async (req, res) => {
         const { projectId } = req.params;
@@ -131,10 +228,20 @@ module.exports = {
                 });
             }
 
+            const formattedComments = comments.map(comment => {
+                if (comment.deleted) {
+                    return {
+                        ...comment.toObject(),
+                        comment: 'This comment has been deleted'
+                    };
+                }
+                return comment;
+            });
+
             return res.status(200).json({
                 EC: 0,
                 message: "Comments fetched successfully",
-                data: { result: comments }
+                data: { result: formattedComments }
             });
         } catch (error) {
             return res.status(500).json({
@@ -144,12 +251,13 @@ module.exports = {
             });
         }
     },
-    approveProject: async (req, res) => {
+
+    startReviewProcess: async (req, res) => {
         const { projectId } = req.params;
-        const { comment } = req.body; // optional comment from reviewer
 
         try {
-            const project = await Project.findById(projectId);
+            const project = await Project.findById(projectId).populate('reviewer');
+
             if (!project) {
                 return res.status(404).json({
                     EC: 1,
@@ -158,64 +266,68 @@ module.exports = {
                 });
             }
 
-            if (project.status === 'Completed') {
+            if (project.status === 'Completed' || project.status === 'Rejected') {
                 return res.status(400).json({
                     EC: 1,
-                    message: "Project is already approved",
+                    message: `Cannot start review process, the project is already ${project.status.toLowerCase()}.`,
                     data: null
                 });
             }
 
-            // Update project status to Completed
-            project.status = 'Completed';
+            if (project.status !== 'Pending' && project.status !== 'In Progress') {
+                return res.status(400).json({
+                    EC: 1,
+                    message: "The project must be in 'Pending' or 'In Progress' to start the review process.",
+                    data: null
+                });
+            }
+
+            project.status = 'In Review';
             await project.save();
 
-            // Add approval comment
-            const approvalComment = new ProjectComment({
-                project: projectId,
-                user: req.user.id, // reviewer
-                comment: comment || "Project approved by reviewer.",
-                action: 'Approval',
-                decision: 'Approved',
-                isResolved: true
-            });
-
-            await approvalComment.save();
-
-            // Log version change
             const newVersion = new ProjectVersion({
                 project: project._id,
-                versionNumber: project.version ? project.version.versionNumber + 1 : 1,
-                changes: 'Project approved by reviewer',
+                versionNumber: project.version ? project.version.versionNumber : 1,
+                changes: `Project moved to 'In Review' status by ${req.user.username}`,
                 updatedBy: req.user.id
             });
 
             await newVersion.save();
 
+            const templateData = await TemplateData.findOne({ templateId: project.template });
+            if (templateData) {
+                templateData.projectData.status = 'In Review'; i
+                templateData.projectData.lastModifier = Date.now();
+                templateData.changesLog.push({
+                    dateChanged: Date.now(),
+                    versionDate: Date.now(),
+                    versionNumber: templateData.version.versionNumber,
+                    action: 'M',
+                    changes: `Project moved to 'In Review' status by ${req.user.username}`
+                });
+
+                await templateData.save();
+            }
+
             return res.status(200).json({
                 EC: 0,
-                message: "Project approved successfully",
-                data: {
-                    result: project,
-                    comment: approvalComment
-                }
+                message: "Review process started successfully",
+                data: { result: project }
             });
 
         } catch (error) {
             return res.status(500).json({
                 EC: 1,
-                message: "Error approving project",
+                message: "Error starting review process",
                 data: { error: error.message }
             });
         }
     },
-
-    rejectProject: async (req, res) => {
+    requestReview: async (req, res) => {
         const { projectId } = req.params;
-        const { comment } = req.body; // optional comment from reviewer
 
         try {
-            const project = await Project.findById(projectId);
+            const project = await Project.findById(projectId).populate('reviewer', 'username');
             if (!project) {
                 return res.status(404).json({
                     EC: 1,
@@ -224,49 +336,59 @@ module.exports = {
                 });
             }
 
-            if (project.status === 'Completed') {
+            if (project.status !== 'Rejected') {
                 return res.status(400).json({
                     EC: 1,
-                    message: "Project is already completed, cannot be rejected",
+                    message: "You can only request a review if the project is rejected.",
                     data: null
                 });
             }
 
-            // Add rejection comment
-            const rejectionComment = new ProjectComment({
-                project: projectId,
-                user: req.user.id, // reviewer
-                comment: comment || "Project rejected by reviewer.",
-                action: 'Approval',
-                decision: 'Rejected',
-                isResolved: true
-            });
+            const user = await UserMaster.findById(req.user.id).populate('role');
+            if (!user) {
+                return res.status(404).json({
+                    EC: 1,
+                    message: "User not found",
+                    data: null
+                });
+            }
 
-            await rejectionComment.save();
+            project.status = 'In Review';
+            await project.save();
 
-            // Log version change
+            const templateData = await TemplateData.findOne({ templateId: project.template });
+            if (templateData) {
+                const versionChange = 0.1;
+                templateData.version.versionNumber += versionChange;
+                templateData.projectData.status = project.status;
+                templateData.projectData.lastModifier = Date.now();
+                templateData.changesLog.push({
+                    dateChanged: Date.now(),
+                    versionDate: Date.now(),
+                    versionNumber: templateData.version.versionNumber,
+                    action: 'M',
+                    changes: `Project sent for re-review by ${user.username}, assigned to reviewer ${project.reviewer.username}`
+                });
+                await templateData.save();
+            }
+
             const newVersion = new ProjectVersion({
                 project: project._id,
-                versionNumber: project.version ? project.version.versionNumber + 1 : 1,
-                changes: 'Project rejected by reviewer',
+                versionNumber: templateData ? templateData.version.versionNumber : 1,
+                changes: `Project sent for re-review by ${user.username}, assigned to reviewer ${project.reviewer.username}`,
                 updatedBy: req.user.id
             });
-
             await newVersion.save();
 
             return res.status(200).json({
                 EC: 0,
-                message: "Project rejected successfully",
-                data: {
-                    result: project,
-                    comment: rejectionComment
-                }
+                message: "Project sent for re-review successfully",
+                data: { result: project }
             });
-
         } catch (error) {
             return res.status(500).json({
                 EC: 1,
-                message: "Error rejecting project",
+                message: "Error sending project for re-review",
                 data: { error: error.message }
             });
         }
