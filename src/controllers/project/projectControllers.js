@@ -439,6 +439,51 @@ module.exports = {
             });
         }
     },
+    getProjectById: async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                EC: 1,
+                message: "Validation failed",
+                data: { errors: errors.array() }
+            });
+        }
+
+        const { projectId } = req.params;
+
+        try {
+            const project = await Project.findById(projectId)
+                .populate('category opportunity division template lead')
+                .populate({
+                    path: 'reviewer',
+                    populate: {
+                        path: 'profile',
+                        select: 'fullName dateOfBirth gender phoneNumber avatar'
+                    }
+                });
+
+            if (!project) {
+                return res.status(404).json({
+                    EC: 1,
+                    message: "Project not found",
+                    data: null
+                });
+            }
+
+            return res.status(200).json({
+                EC: 0,
+                message: "Project details fetched successfully",
+                data: { result: project }
+            });
+
+        } catch (error) {
+            return res.status(500).json({
+                EC: 1,
+                message: "Error fetching project details",
+                data: { error: error.message }
+            });
+        }
+    },
     getReviewers: async (req, res) => {
         try {
             const users = await UserMaster.find()
