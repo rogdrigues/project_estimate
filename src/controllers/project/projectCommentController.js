@@ -5,6 +5,7 @@ const moment = require('moment');
 const ProjectVersion = require('../../models/project/projectVersion');
 const TemplateData = require('../../models/template/templateData');
 const UserMaster = require('../../models/userMaster');
+const Template = require('../../models/template/template');
 
 module.exports = {
     addComment: async (req, res) => {
@@ -20,7 +21,8 @@ module.exports = {
         const { projectId, comment, action = 'Chat', decision, parentComment } = req.body;
 
         try {
-            const project = await Project.findById(projectId);
+            const project = await Project.findById(projectId).populate('template');
+
             if (!project) {
                 return res.status(404).json({
                     EC: 1,
@@ -90,7 +92,7 @@ module.exports = {
                 project.status = decision === 'Approved' ? 'Completed' : 'Rejected';
                 await project.save();
 
-                const templateData = await TemplateData.findOne({ templateId: project.template });
+                const templateData = await TemplateData.findOne({ templateId: project.template._id, projectId: project._id });
                 if (templateData) {
                     const versionChange = decision === 'Approved' ? 1 : 0.1;
                     templateData.version.versionNumber += versionChange;
@@ -210,7 +212,6 @@ module.exports = {
         }
     },
 
-
     getCommentsByProject: async (req, res) => {
         const { projectId } = req.params;
 
@@ -220,23 +221,20 @@ module.exports = {
                 .sort({ createdAt: -1 })
                 .exec();
 
-            if (!comments.length) {
-                return res.status(404).json({
-                    EC: 1,
-                    message: "No comments found for this project",
-                    data: null
-                });
-            }
+            let formattedComments = [];
 
-            const formattedComments = comments.map(comment => {
-                if (comment.deleted) {
-                    return {
-                        ...comment.toObject(),
-                        comment: 'This comment has been deleted'
-                    };
-                }
-                return comment;
-            });
+            if (comments.length) {
+                formattedComments = comments.map(comment => {
+                    if (comment.deleted) {
+                        return {
+                            ...comment.toObject(),
+                            comment: 'This comment has been deleted'
+                        };
+                    }
+                    return comment;
+                });
+
+            }
 
             return res.status(200).json({
                 EC: 0,
@@ -256,7 +254,9 @@ module.exports = {
         const { projectId } = req.params;
 
         try {
-            const project = await Project.findById(projectId).populate('reviewer');
+            const project = await Project.findById(projectId)
+                .populate('reviewer')
+                .populate('template');
 
             if (!project) {
                 return res.status(404).json({
@@ -282,28 +282,29 @@ module.exports = {
                 });
             }
 
+            const user = await UserMaster.findById(req.user.id).populate('role');
+
             project.status = 'In Review';
             await project.save();
 
             const newVersion = new ProjectVersion({
                 project: project._id,
                 versionNumber: project.version ? project.version.versionNumber : 1,
-                changes: `Project moved to 'In Review' status by ${req.user.username}`,
+                changes: `Project moved to 'In Review' status by ${user.username}`,
                 updatedBy: req.user.id
             });
-
             await newVersion.save();
 
-            const templateData = await TemplateData.findOne({ templateId: project.template });
+            const templateData = await TemplateData.findOne({ templateId: project.template._id, projectId: project._id });
             if (templateData) {
-                templateData.projectData.status = 'In Review'; i
+                templateData.projectData.status = 'In Review';
                 templateData.projectData.lastModifier = Date.now();
                 templateData.changesLog.push({
                     dateChanged: Date.now(),
                     versionDate: Date.now(),
                     versionNumber: templateData.version.versionNumber,
                     action: 'M',
-                    changes: `Project moved to 'In Review' status by ${req.user.username}`
+                    changes: `Project moved to 'In Review' status by ${user.username}`
                 });
 
                 await templateData.save();
@@ -327,7 +328,10 @@ module.exports = {
         const { projectId } = req.params;
 
         try {
-            const project = await Project.findById(projectId).populate('reviewer', 'username');
+            const project = await Project.findById(projectId)
+                .populate('reviewer', 'username')
+                .populate('template');
+
             if (!project) {
                 return res.status(404).json({
                     EC: 1,
@@ -356,7 +360,7 @@ module.exports = {
             project.status = 'In Review';
             await project.save();
 
-            const templateData = await TemplateData.findOne({ templateId: project.template });
+            const templateData = await TemplateData.findOne({ templateId: project.template._id, projectId: project._id });
             if (templateData) {
                 const versionChange = 0.1;
                 templateData.version.versionNumber += versionChange;
@@ -369,6 +373,7 @@ module.exports = {
                     action: 'M',
                     changes: `Project sent for re-review by ${user.username}, assigned to reviewer ${project.reviewer.username}`
                 });
+
                 await templateData.save();
             }
 

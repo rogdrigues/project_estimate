@@ -11,6 +11,7 @@ const templateSchema = new mongoose.Schema({
     category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true },
     isLocked: { type: Boolean, default: false },
     tags: { type: [String] },
+    templateData: [{ type: mongoose.Schema.Types.ObjectId, ref: 'TemplateData' }],
 }, { timestamps: true });
 
 templateSchema.plugin(mongooseDelete, { deletedAt: true, overrideMethods: 'all' });

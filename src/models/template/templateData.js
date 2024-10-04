@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const mongooseDelete = require('mongoose-delete');
 const templateDataSchema = new mongoose.Schema({
     templateId: { type: mongoose.Schema.Types.ObjectId, ref: 'Template', required: true },
+    projectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', required: true },
     projectData: {
         projectName: { type: String },
         customer: { type: String },
