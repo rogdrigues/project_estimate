@@ -348,10 +348,9 @@ module.exports = {
                 });
             }
 
-            project.status = 'Archived'; // Đánh dấu project là "Archived"
+            project.status = 'Archived';
             await project.save();
 
-            // Tìm TemplateData liên quan đến Project
             const templateData = await TemplateData.findOne({ templateId: project.template._id, projectId: project._id });
             if (templateData) {
                 templateData.projectData.status = 'Archived';
@@ -365,7 +364,7 @@ module.exports = {
                 await templateData.save();
             }
 
-            await project.delete(); // Xóa project tạm thời
+            await project.delete();
 
             const projectVersion = new ProjectVersion({
                 project: project._id,
@@ -403,11 +402,10 @@ module.exports = {
                 });
             }
 
-            project.status = 'In Progress'; // Khôi phục trạng thái
+            project.status = 'In Progress';
             await project.save();
-            await project.restore(); // Khôi phục project
+            await project.restore();
 
-            // Tìm TemplateData liên quan đến Project
             const templateData = await TemplateData.findOne({ templateId: project.template._id, projectId: project._id });
             if (templateData) {
                 templateData.projectData.status = 'In Progress';

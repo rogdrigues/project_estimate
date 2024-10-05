@@ -18,7 +18,9 @@ module.exports = {
             });
         }
 
-        const { projectId, comment, action = 'Chat', decision, parentComment } = req.body;
+        const { projectId } = req.params;
+
+        const { comment, action = 'Chat', decision, parentComment } = req.body;
 
         try {
             const project = await Project.findById(projectId).populate('template');
@@ -117,10 +119,23 @@ module.exports = {
                 await newVersion.save();
             }
 
+            const getNewComment = await ProjectComment.findOne({ project: projectId, _id: newComment._id })
+                .populate({
+                    path: 'user',
+                    populate: {
+                        path: 'profile',
+                        select: 'fullName dateOfBirth gender phoneNumber avatar'
+                    },
+                    populate: {
+                        path: 'role',
+                        select: 'roleName permissions'
+                    }
+                }).exec();
+
             return res.status(201).json({
                 EC: 0,
                 message: "Comment added successfully",
-                data: { result: newComment }
+                data: getNewComment
             });
         } catch (error) {
             return res.status(500).json({
@@ -217,8 +232,17 @@ module.exports = {
 
         try {
             const comments = await ProjectComment.find({ project: projectId })
-                .populate('user', 'username')
-                .sort({ createdAt: -1 })
+                .populate({
+                    path: 'user',
+                    populate: {
+                        path: 'profile',
+                        select: 'fullName dateOfBirth gender phoneNumber avatar'
+                    },
+                    populate: {
+                        path: 'role',
+                        select: 'roleName permissions'
+                    }
+                })
                 .exec();
 
             let formattedComments = [];
