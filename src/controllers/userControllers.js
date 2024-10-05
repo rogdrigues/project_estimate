@@ -219,11 +219,15 @@ module.exports = {
             }
         });
 
-        //sanitize input
-        updateFields['profile.fullName'] = sanitizeString(updateFields['profile.fullName']);
-        updateFields['profile.phoneNumber'] = sanitizeString(updateFields['profile.phoneNumber']);
-        updateFields['profile.location'] = sanitizeString(updateFields['profile.location']);
-
+        if (updateFields['profile.fullName']) {
+            updateFields['profile.fullName'] = sanitizeString(updateFields['profile.fullName']);
+        }
+        if (updateFields['profile.phoneNumber']) {
+            updateFields['profile.phoneNumber'] = sanitizeString(updateFields['profile.phoneNumber']);
+        }
+        if (updateFields['profile.location']) {
+            updateFields['profile.location'] = sanitizeString(updateFields['profile.location']);
+        }
 
         try {
             const user = await UserMaster.findById(userId)
@@ -238,17 +242,20 @@ module.exports = {
                 });
             }
 
+            if (Object.keys(updateFields).length > 0) {
+                user.set(updateFields);
+                await user.save();
+            }
+
             if (req.file) {
                 if (user.profile.avatar) {
                     const publicId = user.profile.avatar.split('/').pop().split('.')[0];
                     await cloudinary.uploader.destroy(publicId);
                 }
-                updateFields['profile.avatar'] = req.file.path;
+
+                user.set({ 'profile.avatar': req.file.path });
+                await user.save();
             }
-
-            user.set(updateFields);
-
-            await user.save();
 
             return res.status(200).json({
                 EC: 0,
@@ -265,6 +272,7 @@ module.exports = {
             });
         }
     },
+
 
     getUserById: async (req, res) => {
         const { userId } = req.params;

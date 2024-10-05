@@ -23,6 +23,18 @@ const Productivity = require('../../models/productivity');
 const ExcelJS = require('exceljs');
 const path = require('path');
 const fs = require('fs');
+
+const profileAndRolePopulate = [
+    {
+        path: 'profile',
+        select: 'fullName dateOfBirth gender phoneNumber avatar'
+    },
+    {
+        path: 'role',
+        select: 'roleName permissions'
+    }
+];
+
 module.exports = {
     createProject: async (req, res) => {
         const errors = validationResult(req);
@@ -185,7 +197,7 @@ module.exports = {
 
             const [opportunityData, newTemplateData, reviewerData] = await Promise.all([
                 Opportunity.findById(opportunity),
-                Template.findById(template),
+                Template.findById(template._id),
                 UserMaster.findById(reviewer).populate('role', 'permissions').select('username')
             ]);
 
@@ -220,7 +232,7 @@ module.exports = {
             if (project.category._id.toString() !== category.toString()) changes.push(`Category changed from "${project.category.CategoryName}" to "${category.CategoryName}"`);
             if (project.opportunity._id.toString() !== opportunity.toString()) changes.push(`Opportunity changed from "${project.opportunity.name}" to "${opportunityData.name}"`);
 
-            if (project.template._id.toString() !== template.toString()) {
+            if (project.template._id.toString() !== template._id.toString()) {
                 changes.push(`Template changed from "${project.template.name}" to "${newTemplateData.name}"`);
 
                 const oldTemplateData = await TemplateData.findOne({ templateId: project.template._id, projectId: project._id });
@@ -326,6 +338,8 @@ module.exports = {
             });
 
         } catch (error) {
+            //Need to know which line causing error
+            console.error('Error updating project:', error);
             return res.status(500).json({
                 EC: 1,
                 message: "Error updating project",
@@ -452,34 +466,57 @@ module.exports = {
             });
         }
 
-        const { includeDeleted } = req.query;
-        const sortCriteria = { deleted: 1, createdAt: -1 };
+        const { includeDeleted, applyReviewer = false } = req.query;
 
         try {
             const userId = req.user.id;
-            const userRole = req.user.role;
+            const user = await UserMaster.findById(userId).populate('role');
+            const userRole = user.role.roleName;
 
             let projects;
 
-            if (userRole === 'Opportunity') {
+            if (applyReviewer === 'true') {
+                const sortCriteria = { status: 1, createdAt: -1 };
+
                 if (includeDeleted === 'true') {
-                    projects = await Project.findWithDeleted({ createdBy: userId })
-                        .populate('category opportunity lead reviewer')
+                    projects = await Project.findWithDeleted({
+                        reviewer: userId,
+                        status: { $nin: ['Pending', 'In Progress', 'Archive'] }
+                    })
+                        .populate('category opportunity lead reviewer template')
                         .sort(sortCriteria);
                 } else {
-                    projects = await Project.find({ createdBy: userId })
-                        .populate('category opportunity lead reviewer')
+                    projects = await Project.find({
+                        reviewer: userId,
+                        status: { $nin: ['Pending', 'In Progress', 'Archive'] }
+                    })
+                        .populate('category opportunity lead reviewer template')
                         .sort(sortCriteria);
                 }
-            } else {
-                if (includeDeleted === 'true') {
-                    projects = await Project.findWithDeleted()
-                        .populate('category opportunity lead reviewer')
-                        .sort(sortCriteria);
+            }
+            else {
+                const sortCriteria = { deleted: 1, createdAt: -1 };
+
+                if (userRole === 'Opportunity') {
+                    if (includeDeleted === 'true') {
+                        projects = await Project.findWithDeleted({ lead: userId })
+                            .populate('category opportunity lead reviewer template')
+                            .sort(sortCriteria);
+                    } else {
+                        projects = await Project.find({ lead: userId })
+                            .populate('category opportunity lead reviewer template')
+                            .sort(sortCriteria);
+                    }
                 } else {
-                    projects = await Project.find()
-                        .populate('category opportunity lead reviewer')
-                        .sort(sortCriteria);
+                    if (includeDeleted === 'true') {
+                        projects = await Project.findWithDeleted()
+                            .populate('category opportunity lead reviewer template')
+                            .sort(sortCriteria);
+                    } else {
+                        projects = await Project.find()
+                            .populate('category opportunity lead reviewer template')
+                            .sort(sortCriteria);
+                    }
                 }
             }
 
@@ -497,6 +534,7 @@ module.exports = {
             });
         }
     },
+
     getProjectById: async (req, res) => {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
@@ -511,17 +549,14 @@ module.exports = {
 
         try {
             const project = await Project.findById(projectId)
-                .populate('category opportunity division template lead')
+                .populate('category opportunity division template')
                 .populate({
                     path: 'reviewer',
-                    populate: {
-                        path: 'profile',
-                        select: 'fullName dateOfBirth gender phoneNumber avatar'
-                    },
-                    populate: {
-                        path: 'role',
-                        select: 'roleName permissions'
-                    }
+                    populate: profileAndRolePopulate
+                })
+                .populate({
+                    path: 'lead',
+                    populate: profileAndRolePopulate
                 });
 
             if (!project) {
