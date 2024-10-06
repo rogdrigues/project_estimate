@@ -320,12 +320,12 @@ module.exports = {
                 templateDataToUpdate.changesLog.push({
                     dateChanged: Date.now(),
                     versionDate: Date.now(),
-                    versionNumber: parseFloat(templateDataToUpdate.version.versionNumber) + 0.01,
+                    versionNumber: parseFloat(templateDataToUpdate.version.versionNumber).toFixed(2) + 0.01,
                     action: 'M',
                     changes: changes.join(', ')
                 });
 
-                templateDataToUpdate.version.versionNumber = parseFloat(templateDataToUpdate.version.versionNumber) + 0.01;
+                templateDataToUpdate.version.versionNumber = parseFloat(templateDataToUpdate.version.versionNumber).toFixed(2) + 0.01;
                 templateDataToUpdate.version.versionDate = Date.now();
             }
 
@@ -948,7 +948,7 @@ module.exports = {
             });
 
         } catch (error) {
-            console.log('Error updating project components:', error.message);
+            console.log('Error updating project components:', error);
             return res.status(500).json({
                 EC: 1,
                 message: "Error updating project components",
@@ -1161,7 +1161,7 @@ module.exports = {
         }
 
         const { id } = req.params;
-        let { name, unitPrice, location, currency, level } = req.body;
+        let { name, unitPrice, location, currency, level, quantity } = req.body;
 
         try {
             const resource = await ProjectResource.findById(id);
@@ -1187,6 +1187,7 @@ module.exports = {
             resource.level = level || resource.level;
             resource.currency = currency || resource.currency;
             resource.conversionRate = conversionRate;
+            resource.quantity = quantity || resource.quantity;
 
             await resource.save();
 
@@ -1349,7 +1350,29 @@ module.exports = {
 
         try {
             const project = await Project.findById(projectId)
-                .populate('division lead opportunity template');
+                .populate('division lead template')
+                .populate({
+                    path: 'reviewer',
+                    populate: profileAndRolePopulate
+                })
+                .populate({
+                    path: 'lead',
+                    populate: profileAndRolePopulate
+                })
+                .populate({
+                    path: 'opportunity',
+                    populate: [
+                        { path: 'category' },
+                        {
+                            path: 'presalePlan',
+                            populate: {
+                                path: 'createdBy'
+                            }
+                        }
+                    ]
+                })
+                .exec();
+
             if (!project) {
                 return res.status(404).json({
                     EC: 1,
@@ -1387,6 +1410,7 @@ module.exports = {
 
             processCoverSheet(workbook, templateData);
             processLogsChangeSheet(workbook, templateData);
+            processSummarySheet(workbook, templateData, project);
 
             const buffer = await workbook.xlsx.writeBuffer();
 
@@ -1414,7 +1438,7 @@ module.exports = {
 const processCoverSheet = (workbook, templateData) => {
     const coverSheet = workbook.getWorksheet('Cover');
     if (coverSheet.autoFilter) {
-        worksheet.autoFilter = null;
+        coverSheet.autoFilter = null;
     }
     coverSheet.getCell('C2').value = `${templateData?.projectData?.projectName || 'Project Unnamed'}`;
     coverSheet.getCell('D3').value = `${templateData?.version?.versionNumber + " With Modifier" || 'N/A'}`;
@@ -1435,7 +1459,9 @@ const processCoverSheet = (workbook, templateData) => {
 
 const processLogsChangeSheet = (workbook, templateData) => {
     const logsSheet = workbook.getWorksheet('Change logs');
-
+    if (logsSheet.autoFilter) {
+        logsSheet.autoFilter = null;
+    }
     if (!logsSheet) {
         throw new Error('Logs Change sheet is missing');
     }
@@ -1494,9 +1520,42 @@ const processLogsChangeSheet = (workbook, templateData) => {
     }
 };
 
+const processSummarySheet = (workbook, templateData, project) => {
+    const summarySheet = workbook.getWorksheet('Summary');
+    if (summarySheet.autoFilter) {
+        worksheet.autoFilter = null;
+    }
+    summarySheet.getCell('D2').value = `${project?.name || 'Project Unnamed'}`;
+    summarySheet.getCell('D3').value = `${project?.opportunity?.name || 'Opp Unnamed'}`;
+    summarySheet.getCell('D4').value = `${project?.reviewer?.username || 'N/A'}`;
 
+    summarySheet.getCell('I2').value = templateData?.version?.versionDate
+        ? moment(templateData.version.versionDate).format('YYYY-MM-DD')
+        : 'N/A';
 
+    summarySheet.getCell('I3').value = `${templateData?.version?.versionNumber || 1}`;
 
-const processSummarySheet = (workbook, templateData) => {
-    // Handle later if needed
+    //I. Overview 
+    //1. Business overview
+    summarySheet.getCell('D8').value = `${project?.opportunity?.customerName || 'N/A'}`;
+    summarySheet.getCell('D9').value = `${project?.opportunity?.description || 'N/A'}`;
+    summarySheet.getCell('D10').value = `${project?.opportunity?.category?.CategoryName || 'N/A'}`;
+    summarySheet.getCell('D11').value = `${project?.opportunity?.nation || 'N/A'}`;
+    summarySheet.getCell('D12').value = `${project?.opportunity?.budget + " (Depending on the currency)" || 'N/A'}`;
+    summarySheet.getCell('D13').value = `${project?.opportunity?.market || 'N/A'}`;
+    summarySheet.getCell('D14').value = `${project?.opportunity?.moneyType || 'N/A'}`;
+    summarySheet.getCell('D15').value = `${project?.opportunity?.version + " As the latest version" || 'N/A'}`;
+
+    //2. Presale Plan
+    summarySheet.getCell('D17').value = `${project?.opportunity?.presalePlan?.name || 'N/A'}`;
+    summarySheet.getCell('D18').value = `${project?.opportunity?.presalePlan?.description || 'N/A'}`;
+    summarySheet.getCell('D19').value = `${project?.opportunity?.presalePlan?.createdBy?.username || 'N/A'}`;
+    summarySheet.getCell('D20').value = `${project?.opportunity?.presalePlan?.version || 'N/A'}`;
+
+    //3. Project objective
+    summarySheet.getCell('D22').value = `${project?.description || 'N/A'}`;
+
+    //II. Scope
+    //1. Project scope
+    summarySheet.getCell('D31').value = `${project?.opportunity?.scope || 'N/A'}`;
 }

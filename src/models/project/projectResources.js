@@ -9,6 +9,7 @@ const projectResourceSchema = new mongoose.Schema({
     level: { type: String, enum: ['Junior', 'Mid', 'Senior'] },
     currency: { type: String },
     conversionRate: { type: Number },
+    quantity: { type: Number, default: 1 },
     originalResourceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Resource' },
 }, { timestamps: true });
 
