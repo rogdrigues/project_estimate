@@ -338,7 +338,6 @@ module.exports = {
             });
 
         } catch (error) {
-            //Need to know which line causing error
             console.error('Error updating project:', error);
             return res.status(500).json({
                 EC: 1,
@@ -1303,6 +1302,46 @@ module.exports = {
         }
     },
 
+    //TemplateData
+    getTemplateDataById: async (req, res) => {
+        const { projectId, templateId } = req.query;
+
+        if (!projectId || !templateId) {
+            return res.status(400).json({
+                EC: 1,
+                message: "Both projectId and templateId are required",
+                data: null
+            });
+        }
+
+        try {
+            const templateData = await TemplateData.findOne({ projectId, templateId })
+                .populate('templateId projectId version.createdBy')
+                .sort({ createdAt: -1 })
+                .exec();
+
+            if (!templateData) {
+                return res.status(404).json({
+                    EC: 1,
+                    message: "Template data not found",
+                    data: null
+                });
+            }
+
+            return res.status(200).json({
+                EC: 0,
+                message: "Template data fetched successfully",
+                data: templateData
+            });
+        } catch (error) {
+            console.error('Error fetching template data:', error);
+            return res.status(500).json({
+                EC: 1,
+                message: "Error fetching template data",
+                data: { error: error.message }
+            });
+        }
+    },
     ///Excel handler (fix later)
 
     generateExcelFile: async (req, res) => {

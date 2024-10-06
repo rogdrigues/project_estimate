@@ -273,7 +273,6 @@ module.exports = {
                 });
             }
 
-            //sort by name
             const departmentLeads = await UserMaster.find({ role: departmentLeadRole._id })
                 .populate('department')
                 .populate('role')

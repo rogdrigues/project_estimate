@@ -15,12 +15,9 @@ const { sanitizeString } = require('../utils/stringUtils');
 
 module.exports = {
     updateDivisionLeads: async () => {
-        //Get data from userMaster collection
         const users = await UserMaster.find({ division: { $exists: true, $ne: null } });
-        //Update division leads
         await Promise.all(users.map(async user => {
             const division = await Division.findById(user.division);
-            //if division is null we can ignore
             if (division != null) {
                 division.lead = user._id;
                 await division.save();
@@ -43,7 +40,6 @@ module.exports = {
         try {
             let { name, description, lead, code } = req.body;
 
-            // Sanitize input
             description = sanitizeString(description);
             name = sanitizeString(name);
 
@@ -108,7 +104,6 @@ module.exports = {
             const { id } = req.params;
             let { name, description, lead, code } = req.body;
 
-            // Sanitize input
             description = sanitizeString(description);
             name = sanitizeString(name);
 
@@ -289,7 +284,6 @@ module.exports = {
                 });
             }
 
-            //sort by name
             const divisionLeads = await UserMaster.find({ role: divisionLeadRole._id })
                 .populate('division')
                 .populate('role')
@@ -437,7 +431,6 @@ module.exports = {
                 for (let row of rows) {
                     let [name, description, leadUsername, code] = row;
 
-                    // Sanitize input
                     description = sanitizeString(description);
                     name = sanitizeString(name);
 

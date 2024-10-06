@@ -33,14 +33,12 @@ module.exports = {
 
         let { email, role, division, department, profile } = req.body;
 
-        //sanitize input
         email = sanitizeString(email);
         profile.fullName = sanitizeString(profile.fullName);
         profile.phoneNumber = sanitizeString(profile.phoneNumber);
         profile.location = sanitizeString(profile.location);
 
         try {
-            // Check if email already exists
             const existingUser = await UserMaster.findOne({ email });
             if (existingUser) {
                 return res.status(400).json({
@@ -70,15 +68,11 @@ module.exports = {
                 username = `${username}${code}`;
                 existingUsername = await UserMaster.findOne({ username });
             }
-            // Generate displayName
             const displayName = generateDisplayName(profile.fullName);
 
-            //default password when adding new user
             const password = process.env.DEFAULT_PASSWORD;
-            // Hash the password before saving
             const hashedPassword = await bcrypt.hash(password, 10);
 
-            // Create a new user
             const newUser = new UserMaster({
                 username,
                 displayName,
@@ -90,7 +84,6 @@ module.exports = {
                 profile
             });
 
-            // Save user to the database
             await newUser.save();
 
             return res.status(201).json({
@@ -129,7 +122,6 @@ module.exports = {
         const { userId } = req.params;
         let { role, division, department, profile, password } = req.body;
 
-        //sanitize input
         profile.fullName = sanitizeString(profile.fullName);
         profile.phoneNumber = sanitizeString(profile.phoneNumber);
         profile.location = sanitizeString(profile.location);
@@ -452,7 +444,6 @@ module.exports = {
 
         let { email, password } = req.body;
 
-        //sanitize input
         email = sanitizeString(email);
 
         try {
@@ -621,7 +612,6 @@ module.exports = {
                 .select('-password -refreshToken')
                 .exec();
 
-            // Convert data to an array of objects
             const userData = users.map(user => ({
                 Username: user.username,
                 DisplayName: user.displayName,
@@ -631,7 +621,6 @@ module.exports = {
                 Department: user.department ? user.department.code : 'N/A',
             }));
 
-            // Create a new workbook and worksheet
             const workBook = xlsx.utils.book_new();
             const workSheet = xlsx.utils.json_to_sheet(userData, { skipHeader: true });
 
@@ -642,7 +631,7 @@ module.exports = {
 
             // Apply styles to the headers (bold)
             headers.forEach((header, index) => {
-                const cellRef = xlsx.utils.encode_cell({ c: index, r: 0 });  // Cell reference (e.g., A1, B1, etc.)
+                const cellRef = xlsx.utils.encode_cell({ c: index, r: 0 });
                 if (!workSheet[cellRef]) workSheet[cellRef] = {};  // Initialize cell if it's undefined
                 workSheet[cellRef].s = { font: { bold: true } };  // Apply bold font
             });

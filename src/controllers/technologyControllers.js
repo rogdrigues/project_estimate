@@ -263,7 +263,6 @@ module.exports = {
                 for (let row of rows) {
                     let [name, standard, version, category] = row;
 
-                    // Check missing required fields
                     if (!name || !version) {
                         errors.push({
                             row,
@@ -290,7 +289,6 @@ module.exports = {
                     await technology.save();
                 }
 
-                // Check if there are errors and return error file
                 if (errors.length > 0) {
                     const errorWorkBook = xlsx.utils.book_new();
                     const errorSheetData = errors.map(error => ({

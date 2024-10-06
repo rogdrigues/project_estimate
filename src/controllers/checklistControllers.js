@@ -385,7 +385,6 @@ module.exports = {
                     await checklist.save();
                 }
 
-                // Trả về file lỗi nếu có
                 if (errors.length > 0) {
                     const errorWorkBook = xlsx.utils.book_new();
                     const errorSheetData = errors.map(error => ({

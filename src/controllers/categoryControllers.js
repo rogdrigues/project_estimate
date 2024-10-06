@@ -23,11 +23,9 @@ module.exports = {
         try {
             let { CategoryName, SubCategory } = req.body;
 
-            // Sanitize input
             CategoryName = sanitizeString(CategoryName);
             SubCategory = sanitizeString(SubCategory);
 
-            // Check for duplicate category name
             const existingCategory = await Category.findOne({ CategoryName });
             if (existingCategory) {
                 return res.status(400).json({
@@ -82,7 +80,6 @@ module.exports = {
             const { id } = req.params;
             let { CategoryName, SubCategory } = req.body;
 
-            // Sanitize input
             CategoryName = sanitizeString(CategoryName);
             SubCategory = sanitizeString(SubCategory);
 
