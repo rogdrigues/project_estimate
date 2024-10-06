@@ -891,7 +891,7 @@ module.exports = {
                     project.productivity.push(...newProjectProductivityIds);
 
                     const addedProductivityNames = addedProductivity.map(p => p.name).join(', ');
-                    changes.push(`Added ${addedProductivityIds.length} new productivity items: ${addedProductivityNames}`);
+                    changes.push(`Added ${addedProductivityIds.length} new productivity`);
                 }
 
                 if (removedProductivityIds.length) {
@@ -902,7 +902,7 @@ module.exports = {
                     project.productivity = project.productivity.filter(p => !removedProductivityIds.includes(p.toString()));
 
                     const removedProductivityNames = removedProductivity.map(p => p.name).join(', ');
-                    changes.push(`Removed ${removedProductivityIds.length} productivity items: ${removedProductivityNames}`);
+                    changes.push(`Removed ${removedProductivityIds.length} productivity`);
                 }
             }
 
@@ -1350,7 +1350,7 @@ module.exports = {
 
         try {
             const project = await Project.findById(projectId)
-                .populate('division lead template')
+                .populate('division lead template technologies resources checklists productivity')
                 .populate({
                     path: 'reviewer',
                     populate: profileAndRolePopulate
@@ -1358,6 +1358,10 @@ module.exports = {
                 .populate({
                     path: 'lead',
                     populate: profileAndRolePopulate
+                })
+                .populate({
+                    path: 'assumptions',
+                    populate: 'category'
                 })
                 .populate({
                     path: 'opportunity',
@@ -1558,4 +1562,356 @@ const processSummarySheet = (workbook, templateData, project) => {
     //II. Scope
     //1. Project scope
     summarySheet.getCell('D31').value = `${project?.opportunity?.scope || 'N/A'}`;
+
+    //5. Project Technologies
+    if (project?.technologies.length > 0) {
+        const technologies = project?.technologies || [];
+        let startRow = 47;
+
+        const firstRow = summarySheet.getRow(startRow);
+        firstRow.getCell('B').value = technologies[0].name || 'N/A';
+        firstRow.getCell('D').value = technologies[0].standard || 'N/A';
+        firstRow.getCell('G').value = technologies[0].version || 'N/A';
+
+        ['B', 'D', 'G', 'H', 'I', 'J'].forEach(col => {
+            const cell = firstRow.getCell(col);
+            cell.border = {
+                top: { style: 'thin' },
+                left: { style: 'thin' },
+                bottom: { style: 'thin' },
+                right: { style: 'thin' }
+            };
+        });
+
+        firstRow.commit();
+        technologies.slice(1).forEach((tech, index) => {
+            summarySheet.insertRow(startRow + 1 + index, []);
+
+            const currentRow = summarySheet.getRow(startRow + 1 + index);
+            currentRow.height = 30;
+
+            currentRow.getCell('B').value = tech.name || 'N/A';
+            currentRow.getCell('D').value = tech.standard || 'N/A';
+            currentRow.getCell('G').value = tech.version || 'N/A';
+
+            ['B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'].forEach(col => {
+                const cell = currentRow.getCell(col);
+                cell.font = firstRow.getCell(col).font;
+                cell.alignment = {
+                    ...firstRow.getCell(col).alignment,
+                    wrapText: false,
+                };
+                cell.fill = firstRow.getCell(col).fill;
+                cell.border = {
+                    top: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                };
+            });
+
+            ['B', 'D', 'G', 'K'].forEach(col => {
+                const cell = currentRow.getCell(col);
+                cell.border = {
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                };
+            });
+
+            currentRow.commit();
+        });
+    }
+
+    //4. Productivity
+
+    if (project?.productivity) {
+        const productivityData = project?.productivity || [];
+
+        let startRow = 43;
+
+        const firstRow = summarySheet.getRow(startRow);
+        firstRow.getCell('B').value = productivityData[0].productivity || 'N/A';
+        firstRow.getCell('D').value = productivityData[0].norm || 'N/A';
+        firstRow.getCell('G').value = productivityData[0].unit || 'N/A';
+
+        ['B', 'D', 'G', 'H', 'I', 'J'].forEach(col => {
+            const cell = firstRow.getCell(col);
+            cell.border = {
+                top: { style: 'thin' },
+                left: { style: 'thin' },
+                bottom: { style: 'thin' },
+                right: { style: 'thin' }
+            };
+        });
+
+        firstRow.commit();
+
+        productivityData.slice(1).forEach((prod, index) => {
+            summarySheet.insertRow(startRow + 1 + index, []);
+
+            const currentRow = summarySheet.getRow(startRow + 1 + index);
+            currentRow.height = 30;
+
+            currentRow.getCell('B').value = prod.name || 'N/A';
+            currentRow.getCell('D').value = prod.norm || 'N/A';
+            currentRow.getCell('G').value = prod.unit || 'N/A';
+
+            ['B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'].forEach(col => {
+                const cell = currentRow.getCell(col);
+                cell.font = firstRow.getCell(col).font;
+                cell.alignment = {
+                    ...firstRow.getCell(col).alignment,
+                    wrapText: false,
+                };
+                cell.fill = firstRow.getCell(col).fill;
+                cell.border = {
+                    top: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                };
+            });
+
+            ['B', 'D', 'G', 'K'].forEach(col => {
+                const cell = currentRow.getCell(col);
+                cell.font = firstRow.getCell(col).font;
+                cell.alignment = {
+                    ...firstRow.getCell(col).alignment,
+                    wrapText: false,
+                };
+                cell.fill = firstRow.getCell(col).fill;
+                cell.border = {
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                };
+            });
+
+            currentRow.commit();
+        });
+    }
+
+    //3. Checklists 
+    if (project?.checklists) {
+        const checklists = project?.checklists || [];
+
+        let startRow = 39;
+
+        const firstRow = summarySheet.getRow(startRow);
+        firstRow.getCell('B').value = checklists[0].name || 'N/A';
+        firstRow.getCell('D').value = checklists[0].subClass || 'N/A';
+        firstRow.getCell('G').value = checklists[0].description || 'N/A';
+
+        ['B', 'D', 'G', 'H', 'I', 'J'].forEach(col => {
+            const cell = firstRow.getCell(col);
+            cell.border = {
+                top: { style: 'thin' },
+                left: { style: 'thin' },
+                bottom: { style: 'thin' },
+                right: { style: 'thin' }
+            };
+        });
+
+        firstRow.commit();
+        checklists.slice(1).forEach((checklist, index) => {
+            summarySheet.insertRow(startRow + 1 + index, []);
+
+            const currentRow = summarySheet.getRow(startRow + 1 + index);
+            currentRow.height = 30;
+
+            currentRow.getCell('B').value = checklist.name || 'N/A';
+            currentRow.getCell('D').value = checklist.subClass || 'N/A';
+            currentRow.getCell('G').value = checklist.description || 'N/A';
+
+            ['B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'].forEach(col => {
+                const cell = currentRow.getCell(col);
+                cell.font = firstRow.getCell(col).font;
+                cell.alignment = {
+                    ...firstRow.getCell(col).alignment,
+                    wrapText: false,
+                };
+                cell.fill = firstRow.getCell(col).fill;
+                cell.border = {
+                    top: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                };
+            });
+
+            ['B', 'D', 'G', 'K'].forEach(col => {
+                const cell = currentRow.getCell(col);
+                cell.font = firstRow.getCell(col).font;
+                cell.alignment = {
+                    ...firstRow.getCell(col).alignment,
+                    wrapText: false,
+                };
+                cell.fill = firstRow.getCell(col).fill;
+                cell.border = {
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                };
+
+            });
+
+            currentRow.commit();
+
+        });
+    }
+
+    //2. Assumption 
+
+    if (project?.assumptions) {
+        const assumptions = project?.assumptions || [];
+
+        let startRow = 35;
+
+        const firstRow = summarySheet.getRow(startRow);
+        firstRow.getCell('B').value = assumptions[0].category?.CategoryName || 'N/A';
+        firstRow.getCell('D').value = assumptions[0].title || 'N/A';
+        firstRow.getCell('G').value = assumptions[0].content || 'N/A';
+
+        ['B', 'D', 'G', 'H', 'I', 'J'].forEach(col => {
+            const cell = firstRow.getCell(col);
+            cell.border = {
+                top: { style: 'thin' },
+                left: { style: 'thin' },
+                bottom: { style: 'thin' },
+                right: { style: 'thin' }
+            };
+        });
+
+        firstRow.commit();
+        assumptions.slice(1).forEach((assumption, index) => {
+            summarySheet.insertRow(startRow + 1 + index, []);
+
+            const currentRow = summarySheet.getRow(startRow + 1 + index);
+            currentRow.height = 30;
+
+            currentRow.getCell('B').value = assumption.category?.CategoryName || 'N/A';
+            currentRow.getCell('D').value = assumption.title || 'N/A';
+            currentRow.getCell('G').value = assumption.content || 'N/A';
+
+            ['B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'].forEach(col => {
+                const cell = currentRow.getCell(col);
+                cell.font = firstRow.getCell(col).font;
+                cell.alignment = {
+                    ...firstRow.getCell(col).alignment,
+                    wrapText: false,
+                };
+                cell.fill = firstRow.getCell(col).fill;
+                cell.border = {
+                    top: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                };
+            });
+
+            ['B', 'D', 'G', 'K'].forEach(col => {
+                const cell = currentRow.getCell(col);
+                cell.font = firstRow.getCell(col).font;
+                cell.alignment = {
+                    ...firstRow.getCell(col).alignment,
+                    wrapText: false,
+                };
+                cell.fill = firstRow.getCell(col).fill;
+                cell.border = {
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                };
+
+            });
+
+            currentRow.commit();
+
+        });
+    }
+
+    //1. Resources 
+    if (project?.resources) {
+        const resources = project?.resources || [];
+        let startRow = 27;
+
+        const firstRow = summarySheet.getRow(startRow);
+        firstRow.getCell('B').value = resources[0].name || 'N/A';
+        firstRow.getCell('D').value = resources[0].currency || 'N/A';
+        firstRow.getCell('F').value = resources[0].quantity || 'N/A';
+        firstRow.getCell('I').value = resources[0].level || 'N/A';
+        firstRow.getCell('J').value = resources[0].location || 'N/A';
+
+        const totalCost = (resources[0].quantity || 0) * (resources[0].unitPrice || 0);
+        firstRow.getCell('G').value = totalCost.toFixed(2);
+
+        ['B', 'D', 'E', 'F', 'H', 'J'].forEach(col => {
+            const cell = firstRow.getCell(col);
+            cell.alignment = {
+                wrapText: false,
+                alignment: { horizontal: 'left' }
+            };
+            cell.border = {
+                top: { style: 'thin' },
+                left: { style: 'thin' },
+                bottom: { style: 'thin' },
+                right: { style: 'thin' }
+            };
+
+        });
+
+        firstRow.commit();
+
+        resources.slice(1).forEach((resource, index) => {
+            summarySheet.insertRow(startRow + 1 + index, []);
+
+            const currentRow = summarySheet.getRow(startRow + 1 + index);
+            currentRow.height = 30;
+
+            currentRow.getCell('B').value = resource.name || 'N/A';
+            currentRow.getCell('D').value = resource.currency || 'N/A';
+            currentRow.getCell('F').value = resource.quantity || 'N/A';
+            currentRow.getCell('I').value = resource.level || 'N/A';
+            currentRow.getCell('J').value = resource.location || 'N/A';
+
+            const totalCost = (resource.quantity || 0) * (resource.unitPrice || 0);
+            currentRow.getCell('G').value = totalCost.toFixed(2);
+
+            ['B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'].forEach(col => {
+                const cell = currentRow.getCell(col);
+                cell.font = firstRow.getCell(col).font;
+                cell.alignment = {
+                    ...firstRow.getCell(col).alignment,
+                    wrapText: false,
+                };
+                cell.fill = firstRow.getCell(col).fill;
+                cell.border = {
+                    top: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                };
+            });
+
+            //alignment left
+            ['B', 'D', 'F', 'G', 'I', 'J'].forEach(col => {
+                const cell = currentRow.getCell(col);
+                cell.font = firstRow.getCell(col).font;
+                cell.alignment = {
+                    ...firstRow.getCell(col).alignment,
+                    wrapText: false,
+                };
+                cell.fill = firstRow.getCell(col).fill;
+                cell.border = {
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                };
+            });
+
+            ['J'].forEach(col => {
+                const cell = currentRow.getCell(col);
+                cell.font = firstRow.getCell(col).font;
+                cell.alignment = {
+                    ...firstRow.getCell(col).alignment,
+                    wrapText: false,
+                };
+                cell.fill = firstRow.getCell(col).fill;
+                cell.border = {
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+            });
+
+            currentRow.commit();
+        });
+    }
+
 }
