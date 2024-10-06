@@ -9,7 +9,7 @@ const templateDataSchema = new mongoose.Schema({
         status: { type: String },
         division: { type: String },
         process: { type: String }, //status
-        lastModifier: { type: String },
+        versionDate: { type: Date },
     },
     version: {
         versionNumber: { type: Number },

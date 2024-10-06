@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { check } = require('express-validator');
 const authenticateToken = require('../middlewares/authenticateToken');
-const { createProject, updateProject, deleteProject, restoreProject, getAllProjects, updateProjectComponents, getProjectComponents, getReviewers, updateProjectAssumption, updateProjectChecklist, updateProjectProductivity, updateProjectTechnology, updateProjectResource, getProjectById, getTemplateDataById } = require('../controllers/project/projectControllers');
+const { createProject, updateProject, deleteProject, restoreProject, getAllProjects, updateProjectComponents, getProjectComponents, getReviewers, updateProjectAssumption, updateProjectChecklist, updateProjectProductivity, updateProjectTechnology, updateProjectResource, getProjectById, getTemplateDataById, generateExcelFile } = require('../controllers/project/projectControllers');
 const { approveProject, getCommentsByProject, deleteComment, updateComment, addComment, rejectProject, startReviewProcess, requestReview } = require('../controllers/project/projectCommentController');
 
 // Routes for project management
@@ -174,5 +174,9 @@ router.post(
     authenticateToken,
     requestReview
 );
+
+//Excel handling
+
+router.get('/projects/:projectId/generate-excel', generateExcelFile);
 
 module.exports = router;

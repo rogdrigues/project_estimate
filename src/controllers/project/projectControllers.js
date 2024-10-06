@@ -1349,7 +1349,7 @@ module.exports = {
 
         try {
             const project = await Project.findById(projectId)
-                .populate('division lead opportunity');
+                .populate('division lead opportunity template');
             if (!project) {
                 return res.status(404).json({
                     EC: 1,
@@ -1358,17 +1358,22 @@ module.exports = {
                 });
             }
 
-            const templateData = await TemplateData.findOne({ templateId: project.template })
-                .populate('templateId createdBy');
+            const templateData = await TemplateData.findOne({
+                projectId: project._id,
+                templateId: project.template._id
+            }).populate('version.createdBy templateId projectId')
+                .sort({ createdAt: -1 });
+
             if (!templateData) {
                 return res.status(404).json({
                     EC: 1,
-                    message: 'Template data not found',
+                    message: 'Template data not found for this project',
                     data: null
                 });
             }
 
-            const templateFilePath = path.join(__dirname, templateData.filePath);
+            const templateFilePath = path.join(__dirname, '../', project.template.filePath);
+            console.log('Template file path:', templateFilePath);
             if (!fs.existsSync(templateFilePath)) {
                 return res.status(404).json({
                     EC: 1,
@@ -1380,18 +1385,8 @@ module.exports = {
             const workbook = new ExcelJS.Workbook();
             await workbook.xlsx.readFile(templateFilePath);
 
-            const coverSheet = workbook.getWorksheet('Cover');
-            if (!coverSheet) {
-                return res.status(400).json({
-                    EC: 1,
-                    message: 'Cover sheet is missing',
-                    data: null
-                });
-            }
-
-            this.processCoverSheet(workbook, templateData);
-            this.processLogsChangeSheet(workbook, templateData);
-            //this.processSummarySheet(workbook, templateData);
+            processCoverSheet(workbook, templateData);
+            processLogsChangeSheet(workbook, templateData);
 
             const buffer = await workbook.xlsx.writeBuffer();
 
@@ -1412,42 +1407,78 @@ module.exports = {
                 data: { error: error.message }
             });
         }
-    },
+    }
+};
 
-    processCoverSheet: (workbook, templateData) => {
-        const coverSheet = workbook.getWorksheet('Cover');
-        coverSheet.getCell('C2').value = `${templateData?.projectData?.projectName || 'Project Unnamed'}`;
-        coverSheet.getCell('D3').value = `${templateData?.version?.versionNumber || 'N/A'}`;
-        coverSheet.getCell('D4').value = `${templateData?.projectData?.customer || 'N/A'}`;
-        coverSheet.getCell('D5').value = `${templateData?.projectData?.status || 'N/A'}`;
-        coverSheet.getCell('D6').value = `${templateData?.version?.versionDate || 'N/A'}`;
-        coverSheet.getCell('D7').value = `${templateData?.projectData?.lastModifier || 'N/A'}`;
-        coverSheet.getCell('D8').value = `${templateData?.projectData?.division || 'N/A'}`;
-        coverSheet.getCell('D9').value = `${templateData?.version?.createdBy?.username || 'N/A'}`;
-    },
 
-    processLogsChangeSheet: (workbook, templateData) => {
-        const logsSheet = workbook.getWorksheet('Change logs');
+const processCoverSheet = (workbook, templateData) => {
+    const coverSheet = workbook.getWorksheet('Cover');
+    if (coverSheet.autoFilter) {
+        worksheet.autoFilter = null;
+    }
+    coverSheet.getCell('C2').value = `${templateData?.projectData?.projectName || 'Project Unnamed'}`;
+    coverSheet.getCell('D3').value = `${templateData?.version?.versionNumber + " With Modifier" || 'N/A'}`;
+    coverSheet.getCell('D4').value = `${templateData?.projectData?.customer || 'N/A'}`;
+    coverSheet.getCell('D5').value = `${templateData?.projectData?.status || 'N/A'}`;
 
-        if (!logsSheet) {
-            throw new Error('Logs Change sheet is missing');
-        }
+    coverSheet.getCell('D6').value = templateData?.version?.versionDate
+        ? moment(templateData.version.versionDate).format('YYYY-MM-DD')
+        : 'N/A';
 
-        const logs = templateData.changesLog;
+    coverSheet.getCell('D7').value = templateData?.projectData?.lastModifier
+        ? moment(templateData.projectData.lastModifier).format('YYYY-MM-DD HH:mm:ss')
+        : 'N/A';
 
-        let startRow = 4;
+    coverSheet.getCell('D8').value = `${templateData?.projectData?.division || 'N/A'}`;
+    coverSheet.getCell('D9').value = `${templateData?.version?.createdBy?.username || 'N/A'}`;
+};
 
-        logs.forEach((log) => {
-            const currentRow = logsSheet.insertRow(startRow++, [
-                log.dateChanged || 'N/A',
-                log.versionDate || 'N/A',
-                log.versionNumber || 'N/A',
-                log.action || 'N/A',
-                log.changesDescription || 'N/A'
-            ]);
+const processLogsChangeSheet = (workbook, templateData) => {
+    const logsSheet = workbook.getWorksheet('Change logs');
+
+    if (!logsSheet) {
+        throw new Error('Logs Change sheet is missing');
+    }
+
+    const logs = templateData.changesLog;
+    let startRow = 4;
+
+    const firstRow = logsSheet.getRow(startRow);
+
+    if (logs.length > 0) {
+        firstRow.getCell('B').value = logs[0].dateChanged || 'N/A';
+        firstRow.getCell('C').value = logs[0].versionDate || 'N/A';
+        firstRow.getCell('D').value = logs[0].versionNumber || 'N/A';
+        firstRow.getCell('E').value = logs[0].action || 'N/A';
+        firstRow.getCell('F').value = logs[0].changes || 'N/A';
+
+        ['B', 'C', 'D', 'E', 'F'].forEach(col => {
+            const cell = firstRow.getCell(col);
+            cell.border = {
+                top: { style: 'thin' },
+                left: { style: 'thin' },
+                bottom: { style: 'thin' },
+                right: { style: 'thin' }
+            };
+        });
+
+        firstRow.commit();
+
+        logs.slice(1).forEach((log, index) => {
+            const currentRow = logsSheet.getRow(startRow + 1 + index);
+            currentRow.height = 30;
+
+            currentRow.getCell('B').value = log.dateChanged || 'N/A';
+            currentRow.getCell('C').value = log.versionDate || 'N/A';
+            currentRow.getCell('D').value = log.versionNumber || 'N/A';
+            currentRow.getCell('E').value = log.action || 'N/A';
+            currentRow.getCell('F').value = log.changes || 'N/A';
 
             ['B', 'C', 'D', 'E', 'F'].forEach(col => {
                 const cell = currentRow.getCell(col);
+                cell.font = firstRow.getCell(col).font;
+                cell.alignment = firstRow.getCell(col).alignment;
+                cell.fill = firstRow.getCell(col).fill;
                 cell.border = {
                     top: { style: 'thin' },
                     left: { style: 'thin' },
@@ -1458,9 +1489,14 @@ module.exports = {
 
             currentRow.commit();
         });
-    },
 
-    processSummarySheet: (workbook, templateData) => {
-        // Handle later if needed
+        logsSheet.insertRow(startRow + logs.length + 1, []);
     }
 };
+
+
+
+
+const processSummarySheet = (workbook, templateData) => {
+    // Handle later if needed
+}
