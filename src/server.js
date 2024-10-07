@@ -20,8 +20,10 @@ const { checkPendingStatus } = require('./services/cronJobs');
     try {
         //Connect to MongoDB
         await connectDB();
-        //Seeder Data 
-        await seedAllData();
+        //Seeder Data with reset
+        if (process.env.SEED_DATA_RESET === 'true') {
+            await seedAllData();
+        }
         //Routes
         setRoutes(app);
         cron.schedule('0 0 * * *', async () => {
