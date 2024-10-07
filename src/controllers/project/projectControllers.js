@@ -612,6 +612,215 @@ module.exports = {
             });
         }
     },
+    reUsedProject: async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                EC: 1,
+                message: "Validation failed",
+                data: { errors: errors.array() }
+            });
+        }
+
+        const { name, description, category, opportunity, template, reviewer, reuseComponents = [] } = req.body;
+        const { projectId } = req.params;
+
+        try {
+            const existingProject = await Project.findOne({ name: sanitizeString(name) });
+            if (existingProject) {
+                return res.status(400).json({
+                    EC: 1,
+                    message: "Project with this name already exists",
+                    data: null
+                });
+            }
+
+            const reusedProject = await Project.findById(projectId)
+                .populate('resources technologies checklists assumptions productivity');
+
+            const [currentUser, opportunityData, templateData, reviewersData] = await Promise.all([
+                UserMaster.findById(req.user.id).populate('division department').exec(),
+                Opportunity.findById(opportunity),
+                Template.findById(template),
+                UserMaster.find({ _id: { $in: reviewer } }).populate('role')
+            ]);
+
+            if (!opportunityData) {
+                return res.status(404).json({
+                    EC: 1,
+                    message: "Opportunity not found",
+                    data: null
+                });
+            }
+
+            if (!templateData) {
+                return res.status(404).json({
+                    EC: 1,
+                    message: "Template not found",
+                    data: null
+                });
+            }
+
+            const validReviewers = reviewersData.filter(user => {
+                return user.role && user.role.permissions.includes('project_review');
+            });
+
+            if (validReviewers.length === 0) {
+                return res.status(400).json({
+                    EC: 1,
+                    message: "No valid reviewers found with the permission",
+                    data: null
+                });
+            }
+
+            // Tạo project mới
+            const newProject = new Project({
+                name: sanitizeString(name),
+                description: sanitizeString(description),
+                category,
+                opportunity,
+                template,
+                reviewer: validReviewers.map(rev => rev._id),
+                status: 'Pending',
+                lead: req.user.id,
+                division: currentUser?.division?._id,
+                department: currentUser?.department?._id || null,
+            });
+            await newProject.save();
+
+
+            if (reuseComponents.resources) {
+                if (reusedProject.resources.length !== 0) {
+                    for (const resource of reusedProject.resources) {
+                        const newResource = new ProjectResource({
+                            ...resource.toObject(),
+                            _id: undefined,
+                            project: newProject._id
+                        });
+                        await newResource.save();
+                        newProject.resources.push(newResource._id);
+                    }
+                }
+            }
+
+            if (reuseComponents.technologies) {
+                if (reusedProject.technologies.length !== 0) {
+                    for (const tech of reusedProject.technologies) {
+                        const newTech = new ProjectTechnology({
+                            ...tech.toObject(),
+                            _id: undefined,
+                            project: newProject._id
+                        });
+                        await newTech.save();
+                        newProject.technologies.push(newTech._id);
+                    }
+                }
+            }
+
+            if (reuseComponents.checklists) {
+                if (reusedProject.checklists.length !== 0) {
+                    for (const checklist of reusedProject.checklists) {
+                        const newChecklist = new ProjectChecklist({
+                            ...checklist.toObject(),
+                            _id: undefined,
+                            project: newProject._id
+                        });
+                        await newChecklist.save();
+                        newProject.checklists.push(newChecklist._id);
+                    }
+                }
+            }
+
+            if (reuseComponents.assumptions) {
+                if (reusedProject.assumptions.length !== 0) {
+                    for (const assumption of reusedProject.assumptions) {
+                        const newAssumption = new ProjectAssumption({
+                            ...assumption.toObject(),
+                            _id: undefined,
+                            project: newProject._id
+                        });
+                        await newAssumption.save();
+                        newProject.assumptions.push(newAssumption._id);
+                    }
+                }
+            }
+
+            if (reuseComponents.productivity) {
+                if (reusedProject.productivity.length !== 0) {
+                    for (const prod of reusedProject.productivity) {
+                        const newProductivity = new ProjectProductivity({
+                            ...prod.toObject(),
+                            _id: undefined,
+                            project: newProject._id
+                        });
+                        await newProductivity.save();
+                        newProject.productivity.push(newProductivity._id);
+                    }
+                }
+            }
+
+            await newProject.save();
+
+            const newTemplateData = new TemplateData({
+                templateId: templateData._id,
+                projectId: newProject._id,
+                projectData: {
+                    projectName: newProject.name,
+                    customer: opportunityData.customerName,
+                    status: newProject.status,
+                    division: currentUser?.division?.code || 'N/A',
+                    lastModifier: Date.now()
+                },
+                version: {
+                    versionNumber: 1,
+                    versionDate: Date.now(),
+                    createdBy: req.user.id
+                },
+                changesLog: [
+                    {
+                        dateChanged: Date.now(),
+                        versionDate: Date.now(),
+                        versionNumber: 1,
+                        action: 'A',
+                        changes: `Project reused from ${reusedProject.name || 'Unknown'} by ${req.user.username}, reused components: ${Object.keys(reuseComponents).filter(key => reuseComponents[key]).join(', ')}`,
+                    }
+                ]
+            });
+            await newTemplateData.save();
+
+            templateData.templateData.push(newTemplateData._id);
+            await templateData.save();
+
+            const initialVersion = new ProjectVersion({
+                project: newProject._id,
+                versionNumber: 1,
+                changes: 'Initial project creation with basic details and reused components',
+                updatedBy: req.user.id
+            });
+
+            await initialVersion.save();
+
+            return res.status(201).json({
+                EC: 0,
+                message: "Project and components reused successfully",
+                data: {
+                    result: newProject,
+                }
+            });
+
+        } catch (error) {
+            console.error('Error reusing project:', error);
+            return res.status(500).json({
+                EC: 1,
+                message: "Error reusing project",
+                data: {
+                    result: null,
+                    error: error.message
+                }
+            });
+        }
+    },
+
     ///////////////////
     updateProjectComponents: async (req, res) => {
         const errors = validationResult(req);
@@ -915,6 +1124,9 @@ module.exports = {
                 });
             }
 
+            if (project.status === 'Pending') {
+                project.status = 'In Progress';
+            }
             await project.save();
 
             // Update templateData version
@@ -1913,5 +2125,4 @@ const processSummarySheet = (workbook, templateData, project) => {
             currentRow.commit();
         });
     }
-
 }

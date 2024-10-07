@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { check } = require('express-validator');
 const authenticateToken = require('../middlewares/authenticateToken');
-const { createProject, updateProject, deleteProject, restoreProject, getAllProjects, updateProjectComponents, getProjectComponents, getReviewers, updateProjectAssumption, updateProjectChecklist, updateProjectProductivity, updateProjectTechnology, updateProjectResource, getProjectById, getTemplateDataById, generateExcelFile } = require('../controllers/project/projectControllers');
+const { createProject, updateProject, deleteProject, restoreProject, getAllProjects, updateProjectComponents, getProjectComponents, getReviewers, updateProjectAssumption, updateProjectChecklist, updateProjectProductivity, updateProjectTechnology, updateProjectResource, getProjectById, getTemplateDataById, generateExcelFile, reUsedProject } = require('../controllers/project/projectControllers');
 const { approveProject, getCommentsByProject, deleteComment, updateComment, addComment, rejectProject, startReviewProcess, requestReview } = require('../controllers/project/projectCommentController');
 
 // Routes for project management
@@ -73,6 +73,20 @@ router.get(
 )
 
 router.get('/template-data', authenticateToken, getTemplateDataById);
+
+router.post(
+    '/projects/reuse/:projectId',
+    authenticateToken,
+    [
+        check('name', 'Project name is required').notEmpty(),
+        check('description', 'Project description is required').notEmpty(),
+        check('category', 'Category is required').notEmpty(),
+        check('opportunity', 'Opportunity is required').notEmpty(),
+        check('template', 'Template is required').notEmpty(),
+    ],
+    reUsedProject
+);
+
 
 //for updated project components after being selected
 router.put(
