@@ -31,7 +31,7 @@ A comprehensive project management tool designed to help companies efficiently m
 ### Installation Steps
 1. Clone the repository:
     ```bash
-    git clone https://github.com/yourusername/project-management-tool.git
+    git clone https://github.com/rogdrigues/project-management-tool.git
     ```
 2. Navigate to the project directory:
     ```bash
@@ -109,4 +109,4 @@ We welcome contributions to this project. If you'd like to contribute:
 6. Create a pull request, and we will review your changes.
 
 ## Connect to FE github
-Due to some problem, I had to seperate the front-end file which you can found in this link (https://github.com/rogdrigues/project_estimate_fe)
+Due to some problem, I had to separate the front-end file which you can found in this link (https://github.com/rogdrigues/project_estimate_fe)
