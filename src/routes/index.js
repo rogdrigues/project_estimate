@@ -13,7 +13,7 @@ const presaleOpportunityRoutes = require('./presaleOpportunityRoutes');
 const presalePlanRoutes = require('./presalePlanRoutes');
 const templateRoutes = require('./templateRoutes');
 const projectRoutes = require('./projectRoutes');
-
+const dashboardRoutes = require('./dashboardRoutes')
 const setRoutes = (app) => {
     app.use('/api/users', userRoutes);
     app.use('/api/division', divisionRoutes);
@@ -28,6 +28,7 @@ const setRoutes = (app) => {
     app.use('/api/presale', presalePlanRoutes);
     app.use('/api/template', templateRoutes);
     app.use('/api/project', projectRoutes);
+    app.use('/api/dashboard', dashboardRoutes);
 };
 
 module.exports = setRoutes;
