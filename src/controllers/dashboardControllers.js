@@ -83,9 +83,9 @@ module.exports = {
     getOpportunityStatusSummary: async (req, res) => {
         try {
             const [pendingCount, approvedCount, rejectedCount] = await Promise.all([
-                Opportunity.countDocuments({ approveStatus: 'Pending' }),
-                Opportunity.countDocuments({ approveStatus: 'Approved' }),
-                Opportunity.countDocuments({ approveStatus: 'Rejected' })
+                Opportunity.countDocuments({ approvalStatus: 'Pending' }),
+                Opportunity.countDocuments({ approvalStatus: 'Approved' }),
+                Opportunity.countDocuments({ approvalStatus: 'Rejected' })
             ]);
 
             const opportunitySummaryData = {
@@ -120,17 +120,16 @@ module.exports = {
                 Project.countDocuments({ status: 'In Progress' }),
                 Project.countDocuments({ status: 'In Review' }),
                 Project.countDocuments({ status: 'Completed' }),
-                Project.countDocuments({ status: 'Archive' }),
                 Project.countDocuments({ status: 'Rejected' })
             ]);
 
             const projectSummaryData = {
-                labels: ['Pending', 'In Progress', 'In Review', 'Completed', 'Archive', 'Rejected'],
+                labels: ['Pending', 'In Progress', 'In Review', 'Completed', 'Rejected'],
                 datasets: [
                     {
                         label: 'Projects',
-                        data: [pendingCount, inProgressCount, inReviewCount, completedCount, archiveCount, rejectedCount],
-                        backgroundColor: ['#3E95CD', '#3CBA9F', '#FF0000', '#FFCE56', '#9B59B6', '#E74C3C'],
+                        data: [pendingCount, inProgressCount, inReviewCount, completedCount, rejectedCount],
+                        backgroundColor: ['#3E95CD', '#3CBA9F', '#FF0000', '#FFCE56', '#E74C3C'],
                     },
                 ],
             };

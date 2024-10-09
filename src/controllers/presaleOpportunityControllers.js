@@ -249,11 +249,10 @@ module.exports = {
                     .sort(sortCriteria)
                     .exec();
             } else {
-                return res.status(403).json({
-                    EC: 1,
-                    message: 'Unauthorized',
-                    data: { result: 'You do not have permission to view Opportunities.' }
-                });
+                opportunities = await Opportunity.findWithDeleted({})
+                    .populate('division department opportunityLead category')
+                    .sort(sortCriteria)
+                    .exec();
             }
 
             return res.status(200).json({
