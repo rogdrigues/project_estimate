@@ -1,10 +1,10 @@
-const Checklist = require('../models/checklist');
+const Checklist = require('@models/checklist');
 const { validationResult } = require('express-validator');
 const { sanitizeString } = require('../utils/stringUtils');
-const Opportunity = require('../models/opportunity/presaleOpportunity');
-const Project = require('../models/project/project');
-const Template = require('../models/template/template');
-const UserMaster = require('../models/userMaster');
+const Opportunity = require('@models/opportunity/presaleOpportunity');
+const Project = require('@models/project/project');
+const Template = require('@models/template/template');
+const UserMaster = require('@models/userMaster');
 
 module.exports = {
     getWeeklyChanges: async (req, res) => {

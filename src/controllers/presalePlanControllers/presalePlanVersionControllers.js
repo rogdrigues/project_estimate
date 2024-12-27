@@ -1,4 +1,4 @@
-const PresalePlanVersion = require('../../models/opportunity/presalePlanVersion');
+const PresalePlanVersion = require('@models/opportunity/presalePlanVersion');
 const { validationResult } = require('express-validator');
 const { sanitizeString } = require('../../utils/stringUtils');
 

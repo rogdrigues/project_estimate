@@ -1,11 +1,11 @@
-const Opportunity = require('../models/opportunity/presaleOpportunity');
-const UserMaster = require('../models/userMaster');
+const Opportunity = require('@models/opportunity/presaleOpportunity');
+const UserMaster = require('@models/userMaster');
 const { validationResult } = require('express-validator');
 const { sanitizeString } = require('../utils/stringUtils');
 const moment = require('moment');
-const PermissionSet = require('../models/permissionSet');
-const OpportunityVersion = require('../models/opportunity/presaleOpportunityVersion');
-const OpportunityComment = require('../models/opportunity/presaleOpportunityComment');
+const PermissionSet = require('@models/permissionSet');
+const OpportunityVersion = require('@models/opportunity/presaleOpportunityVersion');
+const OpportunityComment = require('@models/opportunity/presaleOpportunityComment');
 module.exports = {
     createOpportunity: async (req, res) => {
         const errors = validationResult(req);

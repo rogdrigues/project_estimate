@@ -1,4 +1,5 @@
 require('dotenv').config();
+require('module-alias/register');
 const connectDB = require('./config/db');
 const express = require('express');
 const app = express();

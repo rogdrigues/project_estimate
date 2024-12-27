@@ -1,11 +1,11 @@
-const Checklist = require('../models/checklist');
+const Checklist = require('@models/checklist');
 const { validationResult } = require('express-validator');
 const { sanitizeString } = require('../utils/stringUtils');
 const xlsx = require('xlsx');
 const multer = require('multer');
 const memoryStorage = multer.memoryStorage();
 const upload = multer({ storage: memoryStorage });
-const Category = require('../models/category');
+const Category = require('@models/category');
 
 module.exports = {
     createChecklist: async (req, res) => {

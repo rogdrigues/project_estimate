@@ -1,7 +1,7 @@
-const Template = require('../models/template/template');
+const Template = require('@models/template/template');
 const { validationResult } = require('express-validator');
 const { sanitizeString } = require('../utils/stringUtils');
-const UserMaster = require('../models/userMaster');
+const UserMaster = require('@models/userMaster');
 const fs = require('fs');
 const path = require('path');
 module.exports = {

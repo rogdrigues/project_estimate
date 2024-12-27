@@ -1,5 +1,5 @@
 const { validationResult } = require('express-validator');
-const Category = require('../models/category');
+const Category = require('@models/category');
 const xlsx = require('xlsx');
 const multer = require('multer');
 const memoryStorage = multer.memoryStorage();

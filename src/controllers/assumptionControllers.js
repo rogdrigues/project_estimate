@@ -1,5 +1,5 @@
-const Assumption = require('../models/assumption');
-const Category = require('../models/category');
+const Assumption = require('@models/assumption');
+const Category = require('@models/category');
 const xlsx = require('xlsx');
 const multer = require('multer');
 const memoryStorage = multer.memoryStorage();

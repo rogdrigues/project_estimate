@@ -1,21 +1,21 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const UserMaster = require('../models/userMaster');
+const UserMaster = require('@models/userMaster');
 const generateToken = require('../services/authService');
 const { validationResult } = require('express-validator');
 const { get } = require('mongoose');
-const PermissionSet = require('../models/permissionSet');
+const PermissionSet = require('@models/permissionSet');
 const xlsx = require('xlsx');
 const validator = require('validator');
-const Division = require('../models/division');
-const Department = require('../models/department');
+const Division = require('@models/division');
+const Department = require('@models/department');
 const multer = require('multer');
 const memoryStorage = multer.memoryStorage();
 const upload = multer({ storage: memoryStorage });
 const cloudinary = require('cloudinary').v2;
 const { sanitizeString, generateDisplayName } = require('../utils/stringUtils');
 const { isValidEmail } = require('../utils/validInput');
-const division = require('../models/division');
+const division = require('@models/division');
 
 module.exports = {
     addNewUser: async (req, res) => {

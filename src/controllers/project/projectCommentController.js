@@ -1,11 +1,11 @@
-const ProjectComment = require('../../models/project/projectComment');
-const Project = require('../../models/project/project');
+const ProjectComment = require('@models/project/projectComment');
+const Project = require('@models/project/project');
 const { validationResult } = require('express-validator');
 const moment = require('moment');
-const ProjectVersion = require('../../models/project/projectVersion');
-const TemplateData = require('../../models/template/templateData');
-const UserMaster = require('../../models/userMaster');
-const Template = require('../../models/template/template');
+const ProjectVersion = require('@models/project/projectVersion');
+const TemplateData = require('@models/template/templateData');
+const UserMaster = require('@models/userMaster');
+const Template = require('@models/template/template');
 
 module.exports = {
     addComment: async (req, res) => {

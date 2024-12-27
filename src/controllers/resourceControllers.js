@@ -1,4 +1,4 @@
-const Resource = require('../models/resource');
+const Resource = require('@models/resource');
 const getConversionRate = require('../services/exchangeRateService');
 const multer = require('multer');
 const memoryStorage = multer.memoryStorage();

@@ -1,11 +1,11 @@
-const PresalePlan = require('../../models/opportunity/presalePlan');
-const PresalePlanComment = require('../../models/opportunity/presalePlanComments');
+const PresalePlan = require('@models/opportunity/presalePlan');
+const PresalePlanComment = require('@models/opportunity/presalePlanComments');
 const { validationResult } = require('express-validator');
 const moment = require('moment');
-const Department = require('../../models/department');
-const Division = require('../../models/division');
-const PresalePlanVersion = require('../../models/opportunity/presalePlanVersion');
-const UserMaster = require('../../models/userMaster');
+const Department = require('@models/department');
+const Division = require('@models/division');
+const PresalePlanVersion = require('@models/opportunity/presalePlanVersion');
+const UserMaster = require('@models/userMaster');
 
 module.exports = {
     createPresalePlan: async (req, res) => {

@@ -1,4 +1,4 @@
-const Productivity = require('../models/productivity');
+const Productivity = require('@models/productivity');
 const xlsx = require('xlsx');
 const multer = require('multer');
 const memoryStorage = multer.memoryStorage();

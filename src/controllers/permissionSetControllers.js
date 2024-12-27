@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const generateToken = require('../services/authService');
 const { validationResult } = require('express-validator');
 const { get } = require('mongoose');
-const PermissionSet = require('../models/permissionSet');
+const PermissionSet = require('@models/permissionSet');
 
 module.exports = {
     getAllRoles: async (req, res) => {

@@ -1,4 +1,4 @@
-const Technology = require('../models/technology');
+const Technology = require('@models/technology');
 const xlsx = require('xlsx');
 const multer = require('multer');
 const memoryStorage = multer.memoryStorage();
