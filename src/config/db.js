@@ -30,11 +30,13 @@ const connectDB = async () => {
             pass: process.env.MONGO_PASS,
             dbName: process.env.MONGO_DB
         };
+        console.log(process.env.MONGO_URI);
         await mongoose.connect(process.env.MONGO_URI, mongooseOptions);
         const state = Number(mongoose.connection.readyState);
         const Check = dbState.find(state => state.state === mongoose.connection.readyState);
         console.log(Check);
     } catch (error) {
+        console.log("Error")
         console.error(error.message);
         process.exit(1);
     }
