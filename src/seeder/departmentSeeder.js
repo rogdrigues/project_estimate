@@ -48,6 +48,8 @@ const seedDepartments = async () => {
         for (let i = 0; i < createdDepartments.length; i++) {
             const lead = departmentLeads[i % departmentLeads.length];
             lead.department = createdDepartments[i]._id;
+            lead.division = createdDepartments[i].division;
+            lead.profile.location = createdDepartments[i].name;
             await lead.save();
         }
         console.log('Department leads updated successfully');
