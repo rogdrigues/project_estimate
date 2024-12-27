@@ -18,7 +18,7 @@ const Resource = require('@models/resource');
 const Checklist = require('@models/checklist');
 const Technology = require('@models/technology');
 const Productivity = require('@models/productivity');
-const ProjectChecklist = require("@models/project/projectChecklist");
+const ProjectChecklist = require("@models/project/projectCheckList");
 
 const ExcelJS = require('exceljs');
 const path = require('path');
