@@ -268,7 +268,7 @@ module.exports = {
                     });
 
                     await newTemplateDataInstance.save();
-                    project.template = newTemplateDataInstance._id;
+                    project.template = newTemplateData._id;
                 } else {
                     changes.push(`Switched back to template "${newTemplateData.name}"`);
                     existingTemplateData.projectData.status = project.status;
@@ -281,7 +281,7 @@ module.exports = {
                         changes: `Switched back to template "${newTemplateData.name}"`
                     });
                     await existingTemplateData.save();
-                    project.template = existingTemplateData._id;
+                    project.template = newTemplateData._id;
                 }
             }
 
@@ -304,34 +304,31 @@ module.exports = {
                     changes: changes.join(', '),
                     updatedBy: req.user.id
                 });
-
                 await newVersion.save();
             }
 
             const templateDataToUpdate = await TemplateData.findOne({ templateId: project.template, projectId: project._id });
-            templateDataToUpdate.projectData.projectName = project.name;
-            templateDataToUpdate.projectData.customer = opportunityData.customer;
-            templateDataToUpdate.projectData.status = project.status;
-            templateDataToUpdate.projectData.lastModifier = Date.now();
+            if (templateDataToUpdate) {
+                templateDataToUpdate.projectData.projectName = project.name;
+                templateDataToUpdate.projectData.customer = opportunityData.customer;
+                templateDataToUpdate.projectData.status = project.status;
+                templateDataToUpdate.projectData.lastModifier = Date.now();
 
-            if (changes.length > 0) {
-                const currentVersion = parseFloat(templateDataToUpdate.version.versionNumber);
-                const newVersionNumber = currentVersion + 0.01;
-
-                templateDataToUpdate.changesLog.push({
-                    dateChanged: Date.now(),
-                    versionDate: Date.now(),
-                    versionNumber: newVersionNumber,
-                    action: 'M',
-                    changes: changes.join(', ')
-                });
-
-                templateDataToUpdate.version.versionNumber = newVersionNumber;
-                templateDataToUpdate.version.versionDate = Date.now();
+                if (changes.length > 0) {
+                    const currentVersion = parseFloat(templateDataToUpdate.version.versionNumber);
+                    const newVersionNumber = currentVersion + 0.01;
+                    templateDataToUpdate.changesLog.push({
+                        dateChanged: Date.now(),
+                        versionDate: Date.now(),
+                        versionNumber: newVersionNumber,
+                        action: 'M',
+                        changes: changes.join(', ')
+                    });
+                    templateDataToUpdate.version.versionNumber = newVersionNumber;
+                    templateDataToUpdate.version.versionDate = Date.now();
+                }
+                await templateDataToUpdate.save();
             }
-
-
-            await templateDataToUpdate.save();
 
             return res.status(200).json({
                 EC: 0,
