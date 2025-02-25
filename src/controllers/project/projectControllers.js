@@ -315,17 +315,21 @@ module.exports = {
             templateDataToUpdate.projectData.lastModifier = Date.now();
 
             if (changes.length > 0) {
+                const currentVersion = parseFloat(templateDataToUpdate.version.versionNumber);
+                const newVersionNumber = currentVersion + 0.01;
+
                 templateDataToUpdate.changesLog.push({
                     dateChanged: Date.now(),
                     versionDate: Date.now(),
-                    versionNumber: parseFloat(templateDataToUpdate.version.versionNumber).toFixed(2) + 0.01,
+                    versionNumber: newVersionNumber,
                     action: 'M',
                     changes: changes.join(', ')
                 });
 
-                templateDataToUpdate.version.versionNumber = parseFloat(templateDataToUpdate.version.versionNumber).toFixed(2) + 0.01;
+                templateDataToUpdate.version.versionNumber = newVersionNumber;
                 templateDataToUpdate.version.versionDate = Date.now();
             }
+
 
             await templateDataToUpdate.save();
 
