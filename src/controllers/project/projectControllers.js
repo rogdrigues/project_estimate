@@ -183,10 +183,8 @@ module.exports = {
 
         const { id } = req.params;
         const { name, description, category, opportunity, template, reviewer } = req.body;
-
         try {
             const project = await Project.findById(id).populate('category opportunity reviewer template');
-
             if (!project) {
                 return res.status(404).json({
                     EC: 1,
@@ -364,7 +362,7 @@ module.exports = {
             project.status = 'Archived';
             await project.save();
 
-            const templateData = await TemplateData.findOne({ templateId: project.template._id, projectId: project._id });
+            const templateData = await TemplateData.findOne({ templateId: project?.template._id, projectId: project._id });
             if (templateData) {
                 templateData.projectData.status = 'Archived';
                 templateData.changesLog.push({
@@ -395,6 +393,7 @@ module.exports = {
             });
 
         } catch (error) {
+            console.log('Error archiving project:', error);
             return res.status(500).json({
                 EC: 1,
                 message: "Error archiving project",
@@ -480,14 +479,14 @@ module.exports = {
                 if (includeDeleted === 'true') {
                     projects = await Project.findWithDeleted({
                         reviewer: userId,
-                        status: { $nin: ['Pending', 'In Progress', 'Archive'] }
+                        status: { $nin: ['Pending', 'In Progress', 'Archived'] }
                     })
                         .populate('category opportunity lead reviewer template')
                         .sort(sortCriteria);
                 } else {
                     projects = await Project.find({
                         reviewer: userId,
-                        status: { $nin: ['Pending', 'In Progress', 'Archive'] }
+                        status: { $nin: ['Pending', 'In Progress', 'Archived'] }
                     })
                         .populate('category opportunity lead reviewer template')
                         .sort(sortCriteria);
@@ -1834,7 +1833,7 @@ const processSummarySheet = (workbook, templateData, project) => {
 
     //4. Productivity
 
-    if (project?.productivity) {
+    if (project?.productivity.length > 0) {
         const productivityData = project?.productivity || [];
 
         let startRow = 43;
@@ -1899,7 +1898,7 @@ const processSummarySheet = (workbook, templateData, project) => {
     }
 
     //3. Checklists 
-    if (project?.checklists) {
+    if (project?.checklists.length > 0) {
         const checklists = project?.checklists || [];
 
         let startRow = 39;
@@ -1966,7 +1965,7 @@ const processSummarySheet = (workbook, templateData, project) => {
 
     //2. Assumption 
 
-    if (project?.assumptions) {
+    if (project?.assumptions.length > 0) {
         const assumptions = project?.assumptions || [];
 
         let startRow = 35;
@@ -2032,7 +2031,7 @@ const processSummarySheet = (workbook, templateData, project) => {
     }
 
     //1. Resources 
-    if (project?.resources) {
+    if (project?.resources.length > 0) {
         const resources = project?.resources || [];
         let startRow = 27;
 

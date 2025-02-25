@@ -4,7 +4,7 @@ const mongooseDelete = require('mongoose-delete');
 const projectSchema = new mongoose.Schema({
     name: { type: String, required: true },
     description: { type: String },
-    status: { type: String, enum: ['Pending', 'In Progress', 'In Review', 'Completed', "Archive", "Rejected"] },
+    status: { type: String, enum: ['Pending', 'In Progress', 'In Review', 'Completed', "Archived", "Rejected"] },
     category: { type: String, required: true },
     department: { type: mongoose.Schema.Types.ObjectId, ref: 'Department' },
     division: { type: mongoose.Schema.Types.ObjectId, ref: 'Division' },
